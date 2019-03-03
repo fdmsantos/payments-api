@@ -13,3 +13,6 @@
 
 # Intelij Dir
 .idea
+
+# Enviroment File
+.env
