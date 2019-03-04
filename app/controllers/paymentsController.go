@@ -32,7 +32,7 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// select the requested payment from the db
-	if err := models.GetDB().Where("ID = ?", payment.ID).First(&payment).Error; !gorm.IsRecordNotFoundError(err) {
+	if err := utils.GetDB().Where("ID = ?", payment.ID).First(&payment).Error; !gorm.IsRecordNotFoundError(err) {
 		if response, err := json.Marshal(utils.Response{Errors: []string{"Payment already exists with that ID"}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
@@ -46,7 +46,7 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if models.GetDB().Create(&payment).Error != nil {
+	if utils.GetDB().Create(&payment).Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -60,7 +60,7 @@ var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 
 	var payments []models.Payment
 
-	if err := models.GetDB().Set("gorm:auto_preload", true).Find(&payments).Error; err != nil {
+	if err := utils.GetDB().Set("gorm:auto_preload", true).Find(&payments).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -122,7 +122,7 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 	var payment models.Payment
 
 	// select the requested payment from the db
-	if err := models.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&payment).Error; err != nil {
+	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&payment).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
 			if response, err := json.Marshal(utils.Response{Errors: []string{"Payment not found"}}); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -223,7 +223,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 	// check the payment exists before editing/replacing it
 	var oldPayment models.Payment
 
-	if err := models.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&oldPayment).Error; err != nil {
+	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&oldPayment).Error; err != nil {
 		if response, err := json.Marshal(utils.Response{Errors: []string{"Payment not found"}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
@@ -235,7 +235,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 
 	oldPayment = payment
 
-	if err := models.GetDB().Save(&oldPayment).Error; err != nil {
+	if err := utils.GetDB().Save(&oldPayment).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -273,7 +273,7 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 		ID: uuid,
 	}
 
-	if err := models.GetDB().Where("ID = ?", uuid).First(&payment).Error; err != nil {
+	if err := utils.GetDB().Where("ID = ?", uuid).First(&payment).Error; err != nil {
 		if response, err := json.Marshal(utils.Response{Errors: []string{"Payment not found"}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
@@ -287,7 +287,7 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// delete the payment
-	if err := models.GetDB().Delete(&payment).Error; err != nil {
+	if err := utils.GetDB().Delete(&payment).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

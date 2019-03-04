@@ -1,4 +1,4 @@
-package models
+package utils
 
 import (
 	"fmt"
@@ -23,7 +23,6 @@ func init() {
 	dbHost := os.Getenv("db_host")
 
 	dbUri := fmt.Sprintf("host=%s user=%s dbname=%s sslmode=disable password=%s", dbHost, username, dbName, password)
-	fmt.Println(dbUri)
 
 	conn, err := gorm.Open("postgres", dbUri)
 	if err != nil {
@@ -39,18 +38,6 @@ func init() {
 	db.Exec("DROP TABLE debtor_parties;")
 	db.Exec("DROP TABLE fxes;")
 	db.Exec("DROP TABLE sponsor_parties;")
-
-	db.AutoMigrate(
-		&Account{},
-		&Payment{},
-		&Attributes{},
-		&BeneficiaryParty{},
-		&DebtorParty{},
-		&SponsorParty{},
-		&ChargesInformation{},
-		&Charge{},
-		&FX{},
-	)
 }
 
 //returns a handle to the DB object
