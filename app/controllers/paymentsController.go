@@ -18,7 +18,7 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 	// read the POSTed payment by decoding it from JSON
 	var payment models.Payment
 	if err := json.NewDecoder(r.Body).Decode(&payment); err != nil {
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Invalid JSON"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{utils.ERROR_INVALID_JSON}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.Header().Add("Content-Type", "application/json")
@@ -124,7 +124,7 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 	// select the requested payment from the db
 	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&payment).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
-			if response, err := json.Marshal(utils.Response{Errors: []string{"Payment not found"}}); err != nil {
+			if response, err := json.Marshal(utils.Response{Errors: []string{utils.ERROR_RESOURCE_NOT_FOUND}}); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			} else {
 				w.Header().Add("Content-Type", "application/json")
@@ -194,7 +194,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 
 	var payment models.Payment
 	if err := json.NewDecoder(r.Body).Decode(&payment); err != nil {
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Invalid JSON"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{utils.ERROR_INVALID_JSON}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
@@ -224,7 +224,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 	var oldPayment models.Payment
 
 	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&oldPayment).Error; err != nil {
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Payment not found"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{utils.ERROR_RESOURCE_NOT_FOUND}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
@@ -274,7 +274,7 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := utils.GetDB().Where("ID = ?", uuid).First(&payment).Error; err != nil {
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Payment not found"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{utils.ERROR_RESOURCE_NOT_FOUND}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusNotFound)

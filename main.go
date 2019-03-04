@@ -12,12 +12,25 @@ import (
 )
 
 func main() {
-
 	router := mux.NewRouter()
 	handlers.Routes(router)
 	router.Use(middleware.JwtAuthentication)
 	//router.NotFoundHandler = utils.NotFoundHandler
 
+	migrateDB()
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000" //localhost
+	}
+
+	err := http.ListenAndServe(":"+port, router) //Launch the app, visit localhost:8000/api
+	if err != nil {
+		fmt.Print(err)
+	}
+}
+
+func migrateDB() {
 	utils.GetDB().AutoMigrate(
 		&models.Account{},
 		&models.Payment{},
@@ -29,14 +42,4 @@ func main() {
 		&models.Charge{},
 		&models.FX{},
 	)
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000" //localhost
-	}
-
-	err := http.ListenAndServe(":"+port, router) //Launch the app, visit localhost:8000/api
-	if err != nil {
-		fmt.Print(err)
-	}
 }
