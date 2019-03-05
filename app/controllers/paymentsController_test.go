@@ -9,6 +9,7 @@ import (
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -40,8 +41,6 @@ func TestMain(m *testing.M) {
 }
 
 func deleteDatabase(t *testing.T) {
-
-	// remove all rows from all of the tables
 	utils.GetDB().Delete(&models.Payment{})
 	utils.GetDB().Delete(&models.Attributes{})
 	utils.GetDB().Delete(&models.BeneficiaryParty{})
@@ -121,8 +120,6 @@ func paymentExample(paymentId uuid.UUID) []byte {
 }
 
 func insertPayments(t *testing.T, paymentId uuid.UUID) models.Payment {
-
-	// populate table with example payment
 	var payment models.Payment
 	if err := json.Unmarshal(paymentExample(paymentId), &payment); err != nil {
 		t.Fatal(err)
@@ -135,83 +132,93 @@ func insertPayments(t *testing.T, paymentId uuid.UUID) models.Payment {
 	return payment
 }
 
-func TestGetPaymentsWithEmptyTable(t *testing.T) {
+func convertToJson(t *testing.T, payment models.Payment) []byte {
+	paymentJson, err := json.Marshal(payment)
+	if err != nil {
+		t.Fatalf("Failed to encode json")
+	}
+	return paymentJson
+}
 
-	deleteDatabase(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/v1/payments", nil)
+func doRequest(t *testing.T, method string, url string, body io.Reader, expectedResultCode int) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, url, body)
+	req.Header.Set("Content-Type", "application/json")
 	rw := httptest.NewRecorder()
 	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 200 {
-		t.Fatalf("Status code was not 200: %d\n", rw.Code)
+
+	if rw.Code != expectedResultCode {
+		t.Fatalf("Status code was not %d: %d\n", expectedResultCode, rw.Code)
 	}
 
+	return rw
+}
+
+func validateHeaderContenType(t *testing.T, rw *httptest.ResponseRecorder) {
 	if rw.Header().Get("Content-Type") != "application/json" {
 		t.Fatalf("Content type was not application/json")
 	}
+}
 
+func decodeApiResponse(t *testing.T, rw *httptest.ResponseRecorder) utils.Response {
 	var response utils.Response
 	err := json.NewDecoder(rw.Body).Decode(&response)
 	if err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
+	return response
+}
 
+func convertJsonToPayment(t *testing.T, rw *httptest.ResponseRecorder) (utils.Response, models.Payment) {
+	response := decodeApiResponse(t, rw)
+	var payment models.Payment
+	if err := json.Unmarshal(response.Data, &payment); err != nil {
+		t.Fatalf("Failed to decode response to payment: %s", err)
+	}
+	return response, payment
+}
+
+func convertJsonToPayments(t *testing.T, rw *httptest.ResponseRecorder) (utils.Response, []models.Payment) {
 	var payments []models.Payment
+	response := decodeApiResponse(t, rw)
 	if err := json.Unmarshal(response.Data, &payments); err != nil {
 		t.Fatalf("Failed to decode response to payments slice: %s", err)
 	}
 
-	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: "/v1/payments"}}, response.Links)
+	return response, payments
+}
 
+func TestGetPaymentsWithEmptyDatabase(t *testing.T) {
+
+	deleteDatabase(t)
+
+	rw := doRequest(t, http.MethodGet, "/v1/payments", nil, http.StatusOK)
+	validateHeaderContenType(t, rw)
+	response, payments := convertJsonToPayments(t, rw)
+
+	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: "/v1/payments"}}, response.Links)
 	assert.Len(t, payments, 0, "Payments array must be empty when database is empty")
 }
 
-func TestGetPaymentsWithOneExistingPayment(t *testing.T) {
+func TestGetPaymentsWithOnePayment(t *testing.T) {
 
 	deleteDatabase(t)
 
 	payment := insertPayments(t, uuid.NewV1())
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/payments", nil)
-	//req.Header.Add("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySWQiOjJ9.DzOJ7GHkPwiDE3T78dFMriY96VwzytQSBV7-c64dxx8")
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
+	rw := doRequest(t, http.MethodGet, "/v1/payments", nil, http.StatusOK)
+	validateHeaderContenType(t, rw)
 
-	if rw.Code != 200 {
-		t.Fatalf("Status code was not 200: %d\n", rw.Code)
-	}
+	response, payments := convertJsonToPayments(t, rw)
 
-	if rw.Header().Get("Content-Type") != "application/json" {
-		t.Fatalf("Content type was not application/json")
-	}
-
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
-
-	var payments []models.Payment
-	if err := json.Unmarshal(response.Data, &payments); err != nil {
-		t.Fatalf("Failed to decode response to payments slice: %s", err)
-	}
-
-	expectedPaymentJson, err := json.Marshal(payment)
-	if err != nil {
-		t.Fatalf("Failed to encode json")
-	}
-
-	atualPaymentJson, err := json.Marshal(payments[0])
-	if err != nil {
-		t.Fatalf("Failed to encode json")
-	}
+	expectedPaymentJson := convertToJson(t, payment)
+	atualPaymentJson := convertToJson(t, payments[0])
 
 	require.Len(t, payments, 1, "Payments array must contain one payment when database has one payment")
 	assert.JSONEq(t, string(expectedPaymentJson), string(atualPaymentJson))
 	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: "/v1/payments"}}, response.Links)
 }
 
-func TestGetPaymentsWithMultipleExistingPayments(t *testing.T) {
+func TestGetPaymentsWithMultiplePayments(t *testing.T) {
 
 	deleteDatabase(t)
 
@@ -220,96 +227,39 @@ func TestGetPaymentsWithMultipleExistingPayments(t *testing.T) {
 	expectedPayments = append(expectedPayments, insertPayments(t, uuid.NewV1()))
 	expectedPayments = append(expectedPayments, insertPayments(t, uuid.NewV1()))
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/payments", nil)
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 200 {
-		t.Fatalf("Status code was not 200: %d\n", rw.Code)
-	}
-
-	if rw.Header().Get("Content-Type") != "application/json" {
-		t.Fatalf("Content type was not application/json")
-	}
-
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
-
-	var payments []models.Payment
-	if err := json.Unmarshal(response.Data, &payments); err != nil {
-		t.Fatalf("Failed to decode response to payments slice: %s", err)
-	}
+	rw := doRequest(t, http.MethodGet, "/v1/payments", nil, http.StatusOK)
+	validateHeaderContenType(t, rw)
+	response, payments := convertJsonToPayments(t, rw)
 
 	var expectedPaymentsJson []string
 	var atualPayments []string
 
 	for _, payment := range expectedPayments {
-		paymentJson, err := json.Marshal(payment)
-		if err != nil {
-			t.Fatalf("Failed to encode json")
-		}
-		expectedPaymentsJson = append(expectedPaymentsJson, string(paymentJson))
+		expectedPaymentsJson = append(expectedPaymentsJson, string(convertToJson(t, payment)))
 	}
 
 	for _, payment := range payments {
-		paymentJson, err := json.Marshal(payment)
-		if err != nil {
-			t.Fatalf("Failed to encode json")
-		}
-		atualPayments = append(atualPayments, string(paymentJson))
+		atualPayments = append(atualPayments, string(convertToJson(t, payment)))
 	}
 
 	require.Len(t, payments, 2, "Payments array must contain two payments when database has two payments")
-
 	for i := 0; i < len(atualPayments); i++ {
 		assert.JSONEq(t, expectedPaymentsJson[i], atualPayments[i])
 	}
-
 	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: "/v1/payments"}}, response.Links)
 }
 
-func TestGetSinglePaymentWithOneExistingPayment(t *testing.T) {
+func TestGetSinglePaymentWithOnePayment(t *testing.T) {
 
 	deleteDatabase(t)
 
 	testPayment := insertPayments(t, uuid.NewV1())
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/payments/%s", testPayment.ID.String()), nil)
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 200 {
-		t.Fatalf("Status code was not 200: %d\n", rw.Code)
-	}
+	rw := doRequest(t, http.MethodGet, fmt.Sprintf("/v1/payments/%s", testPayment.ID.String()), nil, http.StatusOK)
+	validateHeaderContenType(t, rw)
+	response, payment := convertJsonToPayment(t, rw)
 
-	if rw.Header().Get("Content-Type") != "application/json" {
-		t.Fatalf("Content type was not application/json")
-	}
-
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
-
-	var payment models.Payment
-	if err := json.Unmarshal(response.Data, &payment); err != nil {
-		t.Fatalf("Failed to decode response to payment: %s", err)
-	}
-
-	expectedPaymentJson, err := json.Marshal(testPayment)
-	if err != nil {
-		t.Fatalf("Failed to encode json")
-	}
-
-	atualPaymentJson, err := json.Marshal(payment)
-	if err != nil {
-		t.Fatalf("Failed to encode json")
-	}
-
-	assert.EqualValues(t, expectedPaymentJson, atualPaymentJson)
-
+	assert.EqualValues(t, convertToJson(t, testPayment), convertToJson(t, payment))
 	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: fmt.Sprintf("/v1/payments/%s", testPayment.ID.String())}}, response.Links)
 }
 
@@ -317,17 +267,10 @@ func TestGetSinglePaymentForNonExistingPayment(t *testing.T) {
 
 	deleteDatabase(t)
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil)
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 404 {
-		t.Fatalf("Status code was not 404: %d\n", rw.Code)
-	}
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
+	rw := doRequest(t, http.MethodGet, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil, http.StatusNotFound)
+	validateHeaderContenType(t, rw)
+	response := decodeApiResponse(t, rw)
+
 	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
 }
 
@@ -335,17 +278,10 @@ func TestGetSinglePaymentForInvalidUUID(t *testing.T) {
 
 	deleteDatabase(t)
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/payments/%s", "TestUUID"), nil)
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 400 {
-		t.Fatalf("Status code was not 400: %d\n", rw.Code)
-	}
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
+	rw := doRequest(t, http.MethodGet, fmt.Sprintf("/v1/payments/%s", "TestUUID"), nil, http.StatusBadRequest)
+	validateHeaderContenType(t, rw)
+	response := decodeApiResponse(t, rw)
+
 	assert.EqualValues(t, []string{ERROR_REQUESTED_UUID_INVALID}, response.Errors)
 }
 
@@ -355,17 +291,10 @@ func TestGetSinglePaymentForNonExistingPaymentWhenOtherPaymentExists(t *testing.
 
 	_ = insertPayments(t, uuid.NewV1())
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil)
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 404 {
-		t.Fatalf("Status code was not 404: %d\n", rw.Code)
-	}
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
+	rw := doRequest(t, http.MethodGet, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil, http.StatusNotFound)
+	validateHeaderContenType(t, rw)
+	response := decodeApiResponse(t, rw)
+
 	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
 }
 
@@ -375,22 +304,13 @@ func TestCreateSinglePayment(t *testing.T) {
 
 	testPaymentBytes := paymentExample(uuid.NewV1())
 
-	//jsonBytes, err := json.Marshal(testPayment)
-	//require.Nil(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/v1/payments", bytes.NewBuffer(testPaymentBytes))
-	req.Header.Set("Content-Type", "application/json")
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 201 {
-		t.Fatalf("Status code was not 201: %d\n", rw.Code)
-	}
+	rw := doRequest(t, http.MethodPost, "/v1/payments", bytes.NewBuffer(testPaymentBytes), http.StatusCreated)
+	validateHeaderContenType(t, rw)
 
 	var testPayment models.Payment
 	if err := json.Unmarshal(testPaymentBytes, &testPayment); err != nil {
 		t.Fatalf("Failed to decode payment: %s", err)
 	}
-
 	assert.Equal(t, fmt.Sprintf("/v1/payments/%s", testPayment.ID.String()), rw.Header().Get("Location"))
 
 	actualPayment := models.Payment{
@@ -399,60 +319,29 @@ func TestCreateSinglePayment(t *testing.T) {
 
 	utils.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
 
-	expectedPaymentJson, err := json.Marshal(testPayment)
-	if err != nil {
-		t.Fatalf("Failed to encode json")
-	}
-
-	atualPaymentJson, err := json.Marshal(actualPayment)
-	if err != nil {
-		t.Fatalf("Failed to encode json")
-	}
-
-	require.Nil(t, err)
-
-	assert.JSONEq(t, string(expectedPaymentJson), string(atualPaymentJson))
+	assert.JSONEq(t, string(convertToJson(t, testPayment)), string(convertToJson(t, actualPayment)))
 }
 
-func TestCreateSinglePaymentThatAlreadyExists(t *testing.T) {
+func TestCreateSinglePaymentThatExists(t *testing.T) {
 
 	deleteDatabase(t)
 
-	// populate table with example payment
 	examplePayment := insertPayments(t, uuid.NewV1())
-
 	jsonBytes, err := json.Marshal(examplePayment)
 	require.Nil(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/v1/payments", bytes.NewBuffer(jsonBytes))
-	req.Header.Set("Content-Type", "application/json")
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-
-	retry := httptest.NewRecorder()
-	server.Handler.ServeHTTP(retry, req)
-	if retry.Code != 400 {
-		t.Fatalf("Status code was not 400: %d\n", retry.Code)
-	}
+	_ = doRequest(t, http.MethodPost, "/v1/payments", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
 }
 
-func TestCreateSinglePaymentWithInvalidJSON(t *testing.T) {
+func TestCreateSinglePaymentWithInvalidBody(t *testing.T) {
 
 	deleteDatabase(t)
 
 	jsonBytes := []byte("{ malformed json }")
-	req := httptest.NewRequest(http.MethodPost, "/v1/payments", bytes.NewBuffer(jsonBytes))
-	req.Header.Set("Content-Type", "application/json")
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 400 {
-		t.Fatalf("Status code was not 400: %d\n", rw.Code)
-	}
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
+
+	rw := doRequest(t, http.MethodPost, "/v1/payments", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
+	validateHeaderContenType(t, rw)
+	response := decodeApiResponse(t, rw)
+
 	assert.EqualValues(t, []string{utils.ERROR_INVALID_JSON}, response.Errors)
 }
 
@@ -460,21 +349,14 @@ func TestUpdatePayment(t *testing.T) {
 
 	deleteDatabase(t)
 
-	// populate table with example payment
 	testPayment := insertPayments(t, uuid.NewV1())
-
 	testPayment.Attributes.Currency = "Euro"
 
 	jsonBytes, err := json.Marshal(testPayment)
 	require.Nil(t, err)
 
-	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v1/payments/%s", testPayment.ID), bytes.NewBuffer(jsonBytes))
-	req.Header.Set("Content-Type", "application/json")
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 204 {
-		t.Fatalf("Status code was not 204: %d\n", rw.Code)
-	}
+	rw := doRequest(t, http.MethodPut, fmt.Sprintf("/v1/payments/%s", testPayment.ID), bytes.NewBuffer(jsonBytes), http.StatusNoContent)
+
 	assert.Equal(t, fmt.Sprintf("/v1/payments/%s", testPayment.ID.String()), rw.Header().Get("Location"))
 
 	actualPayment := models.Payment{
@@ -482,41 +364,21 @@ func TestUpdatePayment(t *testing.T) {
 	}
 
 	utils.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
-
-	expectedPaymentJson, err := json.Marshal(testPayment)
-	if err != nil {
-		t.Fatalf("Failed to encode json")
-	}
-
-	atualPaymentJson, err := json.Marshal(actualPayment)
-	if err != nil {
-		t.Fatalf("Failed to encode json")
-	}
-
-	assert.JSONEq(t, string(expectedPaymentJson), string(atualPaymentJson))
+	assert.JSONEq(t, string(convertToJson(t, testPayment)), string(convertToJson(t, actualPayment)))
 }
 
 func TestUpdateSinglePaymentWithIDThatDoesNotMatchURL(t *testing.T) {
 
 	deleteDatabase(t)
 
-	// populate table with example payment
 	testPayment := insertPayments(t, uuid.NewV1())
 
 	jsonBytes, err := json.Marshal(testPayment)
 	require.Nil(t, err)
 
-	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), bytes.NewBuffer(jsonBytes))
-	req.Header.Set("Content-Type", "application/json")
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 400 {
-		t.Fatalf("Status code was not 400: %d\n", rw.Code)
-	}
-	var response utils.Response
-	if err := json.NewDecoder(rw.Body).Decode(&response); err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
+	rw := doRequest(t, http.MethodPut, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
+	response := decodeApiResponse(t, rw)
+
 	assert.EqualValues(t, []string{ERROR_ID_MISMATCH}, response.Errors)
 }
 
@@ -524,43 +386,25 @@ func TestUpdateNonExistentPayment(t *testing.T) {
 
 	deleteDatabase(t)
 
-	// populate table with example payment
 	id := uuid.NewV1()
 	testPayment := paymentExample(id)
 
-	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v1/payments/%s", id.String()), bytes.NewBuffer(testPayment))
-	req.Header.Set("Content-Type", "application/json")
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 404 {
-		t.Fatalf("Status code was not 404: %d\n", rw.Code)
-	}
-	var response utils.Response
-	if err := json.NewDecoder(rw.Body).Decode(&response); err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
+	rw := doRequest(t, http.MethodPut, fmt.Sprintf("/v1/payments/%s", id.String()), bytes.NewBuffer(testPayment), http.StatusNotFound)
+	response := decodeApiResponse(t, rw)
+
 	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
 }
 
-func TestUpdateSinglePaymentWithInvalidJSON(t *testing.T) {
+func TestUpdateSinglePaymentWithInvalidBody(t *testing.T) {
 
 	deleteDatabase(t)
 
 	examplePayment := insertPayments(t, uuid.NewV1())
 
 	jsonBytes := []byte("{ Malformed json }")
-	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/v1/payments/%s", examplePayment.ID.String()), bytes.NewBuffer(jsonBytes))
-	req.Header.Set("Content-Type", "application/json")
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 400 {
-		t.Fatalf("Status code was not 400: %d\n", rw.Code)
-	}
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
+	rw := doRequest(t, http.MethodPut, fmt.Sprintf("/v1/payments/%s", examplePayment.ID.String()), bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
+	response := decodeApiResponse(t, rw)
+
 	assert.EqualValues(t, []string{utils.ERROR_INVALID_JSON}, response.Errors)
 }
 
@@ -569,13 +413,7 @@ func TestDeletePayment(t *testing.T) {
 	deleteDatabase(t)
 
 	testPayment := insertPayments(t, uuid.NewV1())
-
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/payments/%s", testPayment.ID), nil)
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 204 {
-		t.Fatalf("Status code was not 204: %d\n", rw.Code)
-	}
+	_ = doRequest(t, http.MethodDelete, fmt.Sprintf("/v1/payments/%s", testPayment.ID), nil, http.StatusNoContent)
 
 	err := utils.GetDB().Where("ID = ?", testPayment.ID).First(&models.Payment{}).Error
 	assert.True(t, gorm.IsRecordNotFoundError(err))
@@ -584,18 +422,9 @@ func TestDeletePayment(t *testing.T) {
 func TestDeleteNonExistingPayment(t *testing.T) {
 
 	deleteDatabase(t)
+	rw := doRequest(t, http.MethodDelete, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil, http.StatusNotFound)
+	response := decodeApiResponse(t, rw)
 
-	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil)
-	rw := httptest.NewRecorder()
-	server.Handler.ServeHTTP(rw, req)
-	if rw.Code != 404 {
-		t.Fatalf("Status code was not 404: %d\n", rw.Code)
-	}
-	var response utils.Response
-	err := json.NewDecoder(rw.Body).Decode(&response)
-	if err != nil {
-		t.Fatalf("Failed to decode API response: %s", err)
-	}
 	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
 
 }
