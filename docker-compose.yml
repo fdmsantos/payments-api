@@ -1,0 +1,24 @@
+version: '3'
+services:
+  database:
+    image: postgres
+    ports:
+      - "5432:5432"
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: api
+      POSTGRES_DB: api
+      POSTGRES_USER: api
+  api:
+    tty: true
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - database
+    environment:
+      DB_USER: api
+      DB_PASS: api
+      DB_NAME: api
+      DB_HOST: database
+      DB_PORT: 5432

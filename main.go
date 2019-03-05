@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
-	"os"
 	"payments/app/handlers"
 	"payments/app/middleware"
 	"payments/models"
@@ -19,12 +18,7 @@ func main() {
 
 	migrateDB()
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000" //localhost
-	}
-
-	err := http.ListenAndServe(":"+port, router) //Launch the app, visit localhost:8000/api
+	err := http.ListenAndServe(":8000", router) //Launch the app, visit localhost:8000/api
 	if err != nil {
 		fmt.Print(err)
 	}
