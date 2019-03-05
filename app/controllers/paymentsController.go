@@ -11,6 +11,10 @@ import (
 	"payments/utils"
 )
 
+const ERROR_PAYMENT_ALREADY_EXISTS = "Payment already exists with that ID"
+const ERROR_REQUESTED_UUID_INVALID = "Requested UUID is Invalid"
+const ERROR_ID_MISMATCH = "Mismatching IDs"
+
 var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 
 	//user := r.Context().Value("user") . (uint) //Grab the id of the user that send the request
@@ -33,7 +37,7 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 
 	// select the requested payment from the db
 	if err := utils.GetDB().Where("ID = ?", payment.ID).First(&payment).Error; !gorm.IsRecordNotFoundError(err) {
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Payment already exists with that ID"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_PAYMENT_ALREADY_EXISTS}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.Header().Add("Content-Type", "application/json")
@@ -106,7 +110,7 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 	uuid, err := uuid.FromString(id)
 	if err != nil {
 		// write an error response indicating the UUID was invalid
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Requested UUID is Invalid"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_REQUESTED_UUID_INVALID}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.Header().Add("Content-Type", "application/json")
@@ -180,7 +184,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 	// parse ID as UUID
 	uuid, err := uuid.FromString(id)
 	if err != nil {
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Invalid UUID"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_REQUESTED_UUID_INVALID}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
@@ -208,7 +212,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 
 	// ensure the payment being updated matches the one specified in the URL
 	if payment.ID.String() != uuid.String() {
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Mismatching IDs"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_ID_MISMATCH}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
@@ -256,7 +260,7 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 	// parse ID as UUID
 	uuid, err := uuid.FromString(id)
 	if err != nil {
-		if response, err := json.Marshal(utils.Response{Errors: []string{"Invalid UUID"}}); err != nil {
+		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_REQUESTED_UUID_INVALID}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)

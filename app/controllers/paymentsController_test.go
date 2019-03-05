@@ -2,28 +2,19 @@ package controllers
 
 import (
 	"bytes"
-	"github.com/jinzhu/gorm"
-
-	//"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
 	"github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	//"github.com/jinzhu/gorm"
-	//"github.com/joho/godotenv"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	//"payments/app"
 	"payments/app/models"
 	"payments/utils"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	//"github.com/stretchr/testify/require"
-	//"github.com/go-pg/pg"
 )
 
 var server *http.Server
@@ -41,38 +32,24 @@ func TestMain(m *testing.M) {
 
 	//router.Use(app.JwtAuthentication) //attach JWT auth middleware
 
-	//router.NotFoundHandler = app.NotFoundHandler
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000" //localhost
-	}
-
-	fmt.Println(port)
-
-	//err := http.ListenAndServe(":"+port, router) //Launch the app, visit localhost:8000/api
-	//if err != nil {
-	//	fmt.Print(err)
-	//}
-
-	server = &http.Server{Addr: ":8080", Handler: router}
+	server = &http.Server{Addr: ":8000", Handler: router}
 
 	code := m.Run()
 
 	os.Exit(code)
 }
 
-func emptyDatabase(t *testing.T) {
+func deleteDatabase(t *testing.T) {
 
 	// remove all rows from all of the tables
-	models.GetDB().Delete(&models.Payment{})
-	models.GetDB().Delete(&models.Attributes{})
-	models.GetDB().Delete(&models.BeneficiaryParty{})
-	models.GetDB().Delete(&models.DebtorParty{})
-	models.GetDB().Delete(&models.SponsorParty{})
-	models.GetDB().Delete(&models.ChargesInformation{})
-	models.GetDB().Delete(&models.Charge{})
-	models.GetDB().Delete(&models.FX{})
+	utils.GetDB().Delete(&models.Payment{})
+	utils.GetDB().Delete(&models.Attributes{})
+	utils.GetDB().Delete(&models.BeneficiaryParty{})
+	utils.GetDB().Delete(&models.DebtorParty{})
+	utils.GetDB().Delete(&models.SponsorParty{})
+	utils.GetDB().Delete(&models.ChargesInformation{})
+	utils.GetDB().Delete(&models.Charge{})
+	utils.GetDB().Delete(&models.FX{})
 }
 
 func paymentExample(paymentId uuid.UUID) []byte {
@@ -151,7 +128,7 @@ func insertPayments(t *testing.T, paymentId uuid.UUID) models.Payment {
 		t.Fatal(err)
 	}
 
-	if err := models.GetDB().Create(&payment).Error; err != nil {
+	if err := utils.GetDB().Create(&payment).Error; err != nil {
 		t.Fatal(err)
 	}
 
@@ -160,7 +137,7 @@ func insertPayments(t *testing.T, paymentId uuid.UUID) models.Payment {
 
 func TestGetPaymentsWithEmptyTable(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/payments", nil)
 	rw := httptest.NewRecorder()
@@ -191,7 +168,7 @@ func TestGetPaymentsWithEmptyTable(t *testing.T) {
 
 func TestGetPaymentsWithOneExistingPayment(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	payment := insertPayments(t, uuid.NewV1())
 
@@ -236,7 +213,7 @@ func TestGetPaymentsWithOneExistingPayment(t *testing.T) {
 
 func TestGetPaymentsWithMultipleExistingPayments(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	var expectedPayments []models.Payment
 
@@ -295,7 +272,7 @@ func TestGetPaymentsWithMultipleExistingPayments(t *testing.T) {
 
 func TestGetSinglePaymentWithOneExistingPayment(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	testPayment := insertPayments(t, uuid.NewV1())
 
@@ -336,10 +313,9 @@ func TestGetSinglePaymentWithOneExistingPayment(t *testing.T) {
 	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: fmt.Sprintf("/v1/payments/%s", testPayment.ID.String())}}, response.Links)
 }
 
-//
 func TestGetSinglePaymentForNonExistingPayment(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil)
 	rw := httptest.NewRecorder()
@@ -352,12 +328,12 @@ func TestGetSinglePaymentForNonExistingPayment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
-	assert.EqualValues(t, []string{"Payment not found"}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
 }
 
 func TestGetSinglePaymentForInvalidUUID(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/payments/%s", "TestUUID"), nil)
 	rw := httptest.NewRecorder()
@@ -370,12 +346,12 @@ func TestGetSinglePaymentForInvalidUUID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
-	assert.EqualValues(t, []string{"Requested UUID is Invalid"}, response.Errors)
+	assert.EqualValues(t, []string{ERROR_REQUESTED_UUID_INVALID}, response.Errors)
 }
 
 func TestGetSinglePaymentForNonExistingPaymentWhenOtherPaymentExists(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	_ = insertPayments(t, uuid.NewV1())
 
@@ -390,12 +366,12 @@ func TestGetSinglePaymentForNonExistingPaymentWhenOtherPaymentExists(t *testing.
 	if err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
-	assert.EqualValues(t, []string{"Payment not found"}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
 }
 
 func TestCreateSinglePayment(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	testPaymentBytes := paymentExample(uuid.NewV1())
 
@@ -421,7 +397,7 @@ func TestCreateSinglePayment(t *testing.T) {
 		ID: testPayment.ID,
 	}
 
-	models.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
+	utils.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
 
 	expectedPaymentJson, err := json.Marshal(testPayment)
 	if err != nil {
@@ -440,7 +416,7 @@ func TestCreateSinglePayment(t *testing.T) {
 
 func TestCreateSinglePaymentThatAlreadyExists(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	// populate table with example payment
 	examplePayment := insertPayments(t, uuid.NewV1())
@@ -462,7 +438,7 @@ func TestCreateSinglePaymentThatAlreadyExists(t *testing.T) {
 
 func TestCreateSinglePaymentWithInvalidJSON(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	jsonBytes := []byte("{ malformed json }")
 	req := httptest.NewRequest(http.MethodPost, "/v1/payments", bytes.NewBuffer(jsonBytes))
@@ -477,12 +453,12 @@ func TestCreateSinglePaymentWithInvalidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
-	assert.EqualValues(t, []string{"Invalid JSON"}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_INVALID_JSON}, response.Errors)
 }
 
 func TestUpdatePayment(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	// populate table with example payment
 	testPayment := insertPayments(t, uuid.NewV1())
@@ -505,7 +481,7 @@ func TestUpdatePayment(t *testing.T) {
 		ID: testPayment.ID,
 	}
 
-	models.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
+	utils.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
 
 	expectedPaymentJson, err := json.Marshal(testPayment)
 	if err != nil {
@@ -522,7 +498,7 @@ func TestUpdatePayment(t *testing.T) {
 
 func TestUpdateSinglePaymentWithIDThatDoesNotMatchURL(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	// populate table with example payment
 	testPayment := insertPayments(t, uuid.NewV1())
@@ -541,12 +517,12 @@ func TestUpdateSinglePaymentWithIDThatDoesNotMatchURL(t *testing.T) {
 	if err := json.NewDecoder(rw.Body).Decode(&response); err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
-	assert.EqualValues(t, []string{"Mismatching IDs"}, response.Errors)
+	assert.EqualValues(t, []string{ERROR_ID_MISMATCH}, response.Errors)
 }
 
 func TestUpdateNonExistentPayment(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	// populate table with example payment
 	id := uuid.NewV1()
@@ -563,12 +539,12 @@ func TestUpdateNonExistentPayment(t *testing.T) {
 	if err := json.NewDecoder(rw.Body).Decode(&response); err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
-	assert.EqualValues(t, []string{"Payment not found"}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
 }
 
 func TestUpdateSinglePaymentWithInvalidJSON(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	examplePayment := insertPayments(t, uuid.NewV1())
 
@@ -585,12 +561,12 @@ func TestUpdateSinglePaymentWithInvalidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
-	assert.EqualValues(t, []string{"Invalid JSON"}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_INVALID_JSON}, response.Errors)
 }
 
 func TestDeletePayment(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	testPayment := insertPayments(t, uuid.NewV1())
 
@@ -601,13 +577,13 @@ func TestDeletePayment(t *testing.T) {
 		t.Fatalf("Status code was not 204: %d\n", rw.Code)
 	}
 
-	err := models.GetDB().Where("ID = ?", testPayment.ID).First(&models.Payment{}).Error
+	err := utils.GetDB().Where("ID = ?", testPayment.ID).First(&models.Payment{}).Error
 	assert.True(t, gorm.IsRecordNotFoundError(err))
 }
 
 func TestDeleteNonExistingPayment(t *testing.T) {
 
-	emptyDatabase(t)
+	deleteDatabase(t)
 
 	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil)
 	rw := httptest.NewRecorder()
@@ -620,6 +596,6 @@ func TestDeleteNonExistingPayment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to decode API response: %s", err)
 	}
-	assert.EqualValues(t, []string{"Payment not found"}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
 
 }
