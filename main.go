@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"payments/app/handlers"
 	"payments/app/middleware"
-	"payments/models"
+	"payments/app/models"
 	"payments/utils"
 )
 

@@ -17,7 +17,7 @@ import (
 	"net/http/httptest"
 	"os"
 	//"payments/app"
-	"payments/models"
+	"payments/app/models"
 	"payments/utils"
 	"testing"
 

@@ -7,7 +7,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/satori/go.uuid"
 	"net/http"
-	"payments/models"
+	"payments/app/models"
 	"payments/utils"
 )
 

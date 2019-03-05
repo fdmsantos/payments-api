@@ -3,7 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
-	"payments/models"
+	"payments/app/models"
 	u "payments/utils"
 )
 
