@@ -30,14 +30,41 @@ func TestMain(m *testing.M) {
 	router.HandleFunc("/v1/payments/{id}", GetPayment).Methods(http.MethodGet)
 	router.HandleFunc("/v1/payments/{id}", UpdatePayment).Methods(http.MethodPut)
 	router.HandleFunc("/v1/payments/{id}", DeletePayment).Methods(http.MethodDelete)
-
-	//router.Use(app.JwtAuthentication) //attach JWT auth middleware
+	//router.Use(middleware.JwtAuthentication)
 
 	server = &http.Server{Addr: ":8000", Handler: router}
 
 	code := m.Run()
 
 	os.Exit(code)
+}
+
+func loginUser(t *testing.T, email string, password string) {
+	//user := createUser(t, email, password)
+	//userJson, err := json.Marshal(user)
+	//if err != nil {
+	//	t.Fatalf("Failed to encode json")
+	//}
+
+	//req := httptest.NewRequest(http.MethodPost, "/v1/user/login", bytes.NewBuffer(userJson))
+	//req.Header.Set("Content-Type", "application/json")
+	//rw := httptest.NewRecorder()
+	//server.Handler.ServeHTTP(rw, req)
+	//response := decodeApiResponse(t, rw)
+}
+
+func createUser(t *testing.T, email string, password string) models.Account {
+	user := models.Account{
+		Email:    email,
+		Password: password,
+	}
+
+	err := utils.GetDB().Create(&user).Error
+	if err != nil {
+		t.Fatalf("Failed create User")
+	}
+
+	return user
 }
 
 func deleteDatabase(t *testing.T) {
