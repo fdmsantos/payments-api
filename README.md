@@ -1,6 +1,6 @@
 # REST API Test (Form3)
 
-Basic REST API built in Golang with a PostgreSQL database. 
+REST API built in Golang with a PostgreSQL database. 
 
 Api Design is [summarised here](design.pdf).
 
