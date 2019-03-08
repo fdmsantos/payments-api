@@ -7,8 +7,8 @@ Api Design is [summarised here](design.pdf).
 ## Running the tests
 
 ```sh
-git clone https://github.com/fdmsantos/test
-cd test
+git clone https://github.com/fdmsantos/payments-api
+cd payments-api
 docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres -d
 export DB_HOST=localhost
 export DB_NAME=payments-api
@@ -28,8 +28,8 @@ go test ./...
 - Nothing running on port 8000 and 5432
 
 ```sh
-git clone https://github.com/fdmsantos/test
-cd test
+git clone https://github.com/fdmsantos/payments-api
+cd payments-api
 docker-compose build
 docker-compose up -d 
 ```
