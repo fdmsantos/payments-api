@@ -259,4 +259,5 @@ curl --request DELETE \
 * Add Log  [logrus](https://github.com/sirupsen/logrus)
 * Add Documentation [godoc](https://godoc.org/golang.org/x/tools/cmd/godoc)
 * Create Api Documentation with [swagger](https://github.com/go-swagger/go-swagger)
+* Refactoring The code. (Move Validations from Controllers to Models)
 * Deploy in AWS ECS with Terraform
