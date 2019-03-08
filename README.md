@@ -9,9 +9,9 @@ Api Design is [summarised here](design.pdf).
 ```sh
 git clone https://github.com/fdmsantos/payments-api
 cd payments-api
-docker run -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres -d
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres
 export DB_HOST=localhost
-export DB_NAME=payments-api
+export DB_NAME=paymentsapi
 export DB_USER=postgres
 export DB_PASS=mysecretpassword
 export DB_PORT=5432
