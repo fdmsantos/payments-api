@@ -36,6 +36,39 @@ docker-compose up -d
 
 Connect to localhost:8000/v1/user To create new User.
 
+### Aws with terraform (Work in Progress)
+
+**Requirements**
+
+- Docker
+- Terraform
+- Aws Cli with login configured
+
+**Steps**
+
+1. Containerize Payment REST API application
+2. Use AWS CLI to create Amazon ECR repository
+3. Build docker image and push to ECR
+4. Create VPC, Subnets, InternetGateway, Route tables
+5. Create IAM role
+6. Create ECS Cluster, Loadbalancer & Listener, Security groups etc
+7. Deploy docker container
+
+```sh
+git clone https://github.com/fdmsantos/payments-api
+cd payments-api
+docker build -t payments-api .
+aws ecr create-repository --repository-name payments-api
+aws ecr get-login --no-include-email | sh
+IMAGE_REPO=$(aws ecr describe-repositories --repository-names payments-api --query 'repositories[0].repositoryUri' --output text)
+docker tag payments-api:latest $IMAGE_REPO:v1
+docker push $IMAGE_REPO:v1
+terraform init
+# To get Image ID
+echo $IMAGE_REPO
+terraform apply
+```
+
 ## Usage
 
 ### New User

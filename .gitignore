@@ -14,5 +14,6 @@
 # Intelij Dir
 .idea
 
-# Enviroment File
-.env
+# Terraform files
+.terraform*
+terraform.tfstat*
