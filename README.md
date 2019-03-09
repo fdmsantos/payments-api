@@ -56,7 +56,7 @@ Connect to localhost:8000/v1/user To create new User.
 
 ```sh
 git clone https://github.com/fdmsantos/payments-api
-cd payments-api
+cd payments-api/tf
 docker build -t payments-api .
 aws ecr create-repository --repository-name payments-api
 aws ecr get-login --no-include-email | sh
