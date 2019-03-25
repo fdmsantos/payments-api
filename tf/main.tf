@@ -88,6 +88,13 @@ resource "aws_security_group" "load_balancer_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  egress {
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags = {
     Terraform   = "true"
     Environment = "${var.env}"
@@ -150,6 +157,13 @@ resource "aws_security_group" "container_security_group" {
     to_port         = 0
     security_groups = ["${aws_security_group.load_balancer_security_group.id}"]
 
+  }
+
+  egress {
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
