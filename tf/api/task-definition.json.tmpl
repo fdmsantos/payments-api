@@ -7,7 +7,7 @@
     "essential": true,
     "portMappings": [{
         "containerPort" : ${containerPort},
-        "Protocol"      :  "${portMappingsProtocol}"
+        "Protocol"      :  "${protocol}"
     }],
     "logConfiguration": {
       "logDriver": "awslogs",
@@ -16,6 +16,13 @@
         "awslogs-region"        : "${awsRegion}",
         "awslogs-stream-prefix" : "payment-apis"
       }
-    }
+    },
+    "environment": [
+      { "name" : "DB_USER", "value" : "api" },
+      { "name" : "DB_PASS", "value" : "test123456" },
+      { "name" : "DB_NAME", "value" : "payments" },
+      { "name" : "DB_HOST", "value" : "payments.culfnfuxbney.eu-west-1.rds.amazonaws.com" },
+      { "name" : "DB_PORT", "value" : "5432" }
+    ]
   }
 ]

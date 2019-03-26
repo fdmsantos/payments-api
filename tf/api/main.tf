@@ -180,7 +180,6 @@ resource "template_file" "task_definition" {
     cpu                  = 256
     memory               = 512
     containerPort        = "${var.container_port}"
-    portMappingsProtocol = "tcp"
     protocol             = "tcp"
     awsRegion            = "${var.aws_region}"
   }
@@ -228,16 +227,16 @@ resource "aws_lb_target_group" "load_balancer_target_group_2" {
   name     = "${var.api_name}-${var.env}-loadtarget-group"
   vpc_id   = "${module.vpc.vpc_id}"
   protocol = "HTTP"
-  port     = "${var.container_port}"
+  port     = "80"
 
-  health_check {
-    interval          = 10
-    path              = "/v1/payments"
-    protocol          = "HTTP"
-    timeout           = "5"
-    healthy_threshold = 10
-    matcher           = "200-299"
-  }
+//  health_check {
+//    interval          = 10
+//    path              = "/v1/payments"
+//    protocol          = "HTTP"
+//    timeout           = "5"
+//    healthy_threshold = 10
+//    matcher           = "200-299"
+//  }
 
   target_type = "ip"
 
