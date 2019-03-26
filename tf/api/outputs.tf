@@ -37,5 +37,5 @@ output "LoadBalancerDNS" {
 
 output "ApiEndpoint" {
   description = "ApiEndpoint"
-  value       = "http://${aws_lb.load_balancer.dns_name}/api/v1/"
+  value       = "http://${aws_lb.load_balancer.dns_name}/v1/"
 }

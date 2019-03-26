@@ -1,1 +1,13 @@
-aws_region = "eu-west-1"
+aws_region        = "eu-west-1"
+vpc_cidr          = "11.0.0.0/16"
+public_subnets    = [ "11.0.0.0/20", "11.0.32.0/20" ]
+env               = "dev"
+name              = "payments-database"
+db_storage        = 20
+db_engine         = "postgres"
+db_instance_class = "db.t2.micro"
+db_identifier     = "payments-api-database"
+db_name           = "payments"
+db_username       = "api"
+db_password       = "test123456"
+db_engine_version = "10.6"
