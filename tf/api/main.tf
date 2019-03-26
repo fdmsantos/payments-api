@@ -8,6 +8,9 @@ data "aws_db_instance" "database" {
   db_instance_identifier = "${var.db_instance_identifier}"
 }
 
+data "aws_ecr_repository" "repository" {
+  name = "${var.repository}"
+}
 
 module "vpc" {
   source               = "terraform-aws-modules/vpc/aws"
@@ -181,7 +184,7 @@ resource "template_file" "task_definition" {
   template = "${file("task-definition.json.tmpl")}"
   vars {
     name                 = "${var.container_name}"
-    image                = "${var.image}"
+    image                = "${data.aws_ecr_repository.repository.repository_url}:${var.image_tag}"
     cpu                  = 256
     memory               = 512
     containerPort        = "${var.container_port}"
@@ -270,5 +273,3 @@ resource "aws_lb_listener_rule" "listener_rule" {
     values = ["/v1/*"]
   }
 }
-
-

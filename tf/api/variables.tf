@@ -33,5 +33,9 @@ variable "db_instance_identifier" {
 variable "db_pass" {
 }
 
-variable "image" {
+variable "repository" {
+}
+
+variable "image_tag" {
+  default = "v1"
 }
