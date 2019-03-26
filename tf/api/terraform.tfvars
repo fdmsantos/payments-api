@@ -8,4 +8,4 @@ container_port         = 8000
 db_instance_identifier = "payments-api-database"
 db_pass                = "test123456"
 repository             = "payments-api"
-image_tag              = "v1"
+image_tag              = "v2"

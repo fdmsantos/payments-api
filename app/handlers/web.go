@@ -14,4 +14,5 @@ var Routes = func(router *mux.Router) {
 	router.HandleFunc("/v1/payments/{id}", controllers.GetPayment).Methods(http.MethodGet)
 	router.HandleFunc("/v1/payments/{id}", controllers.UpdatePayment).Methods(http.MethodPut)
 	router.HandleFunc("/v1/payments/{id}", controllers.DeletePayment).Methods(http.MethodDelete)
+	router.HandleFunc("/v1/health", controllers.HealthCheck).Methods(http.MethodGet)
 }

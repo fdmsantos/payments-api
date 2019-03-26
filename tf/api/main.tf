@@ -242,14 +242,14 @@ resource "aws_lb_target_group" "load_balancer_target_group_2" {
   protocol = "HTTP"
   port     = "80"
 
-//  health_check {
-//    interval          = 10
-//    path              = "/v1/payments"
-//    protocol          = "HTTP"
-//    timeout           = "5"
-//    healthy_threshold = 10
-//    matcher           = "200-299"
-//  }
+  health_check {
+    interval          = 10
+    path              = "/v1/health"
+    protocol          = "HTTP"
+    timeout           = "5"
+    healthy_threshold = 10
+    matcher           = "200"
+  }
 
   target_type = "ip"
 
