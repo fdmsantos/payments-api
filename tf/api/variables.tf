@@ -27,6 +27,11 @@ variable "container_port" {
   default = 8000
 }
 
-variable "image" {
+variable "db_instance_identifier" {
+}
 
+variable "db_pass" {
+}
+
+variable "image" {
 }

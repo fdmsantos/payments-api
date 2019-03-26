@@ -4,6 +4,11 @@ provider "aws" {
 
 data "aws_availability_zones" "available" {}
 
+data "aws_db_instance" "database" {
+  db_instance_identifier = "${var.db_instance_identifier}"
+}
+
+
 module "vpc" {
   source               = "terraform-aws-modules/vpc/aws"
   name                 = "${var.api_name}-${var.env}-vpc"
@@ -182,6 +187,11 @@ resource "template_file" "task_definition" {
     containerPort        = "${var.container_port}"
     protocol             = "tcp"
     awsRegion            = "${var.aws_region}"
+    dbUser               = "${data.aws_db_instance.database.master_username}"
+    dbPass               = "${var.db_pass}"
+    dbName               = "${data.aws_db_instance.database.db_name}"
+    dbHost               = "${element(split(":", data.aws_db_instance.database.endpoint), 0)}"
+    dbPort               = "${element(split(":", data.aws_db_instance.database.endpoint), 1)}"
   }
 }
 
