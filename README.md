@@ -56,13 +56,14 @@ Connect to localhost:8000/v1/user To create new User.
 
 ```sh
 git clone https://github.com/fdmsantos/payments-api
-cd payments-api/tf
+cd payments-api
 docker build -t payments-api .
 aws ecr create-repository --repository-name payments-api
 aws ecr get-login --no-include-email | sh
 IMAGE_REPO=$(aws ecr describe-repositories --repository-names payments-api --query 'repositories[0].repositoryUri' --output text)
 docker tag payments-api:latest $IMAGE_REPO:v1
 docker push $IMAGE_REPO:v1
+cd tf
 terraform init
 # To get Image ID
 echo $IMAGE_REPO

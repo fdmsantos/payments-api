@@ -24,7 +24,7 @@ variable "container_name" {
 }
 
 variable "container_port" {
-  default = 80
+  default = 8000
 }
 
 variable "image" {

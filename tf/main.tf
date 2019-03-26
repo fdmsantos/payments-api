@@ -232,7 +232,7 @@ resource "aws_lb_target_group" "load_balancer_target_group_2" {
 
   health_check {
     interval          = 10
-    path              = "/v1/api"
+    path              = "/v1/payments"
     protocol          = "HTTP"
     timeout           = "5"
     healthy_threshold = 10
@@ -258,7 +258,7 @@ resource "aws_lb_listener_rule" "listener_rule" {
 
   condition {
     field  = "path-pattern"
-    values = ["/v1/api*"]
+    values = ["/v1/*"]
   }
 }
 
