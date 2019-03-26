@@ -2,7 +2,7 @@
 
 REST API built in Golang with a PostgreSQL database. 
 
-Api Design is [summarised here](design.pdf).
+Api Design: [click me](Form3-Payments-api.pdf)
 
 ## Running the tests
 
