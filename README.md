@@ -98,19 +98,6 @@ curl --request POST \
 }'
 ```
 
-### Login
-
-```sh
-curl --request POST \
-  --url http://localhost:8000/v1/user/login \
-  --header 'content-type: application/json' \
-  --data '{
-	"email": "fabiosantos@gmail.com",
-	"password": "secretpassword"
-
-}'
-```
-
 ### New Payment
 
 ```sh
@@ -291,7 +278,6 @@ curl --request DELETE \
 ## Future Improvements
 
 * Add Log  [logrus](https://github.com/sirupsen/logrus)
-* Add Documentation [godoc](https://godoc.org/golang.org/x/tools/cmd/godoc)
 * Create Api Documentation with [swagger](https://github.com/go-swagger/go-swagger)
 * Refactoring The code. (Move Validations from Controllers to Models)
 * Deploy in AWS ECS with Terraform
