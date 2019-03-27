@@ -15,11 +15,13 @@ const ERROR_PAYMENT_ALREADY_EXISTS = "Payment already exists with that ID"
 const ERROR_REQUESTED_UUID_INVALID = "Requested UUID is Invalid"
 const ERROR_ID_MISMATCH = "Mismatching IDs"
 
+// CreatePayment handler to create a single payment
+// Receives the payment and inserts in database
 var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 
 	//user := r.Context().Value("user") . (uint) //Grab the id of the user that send the request
 
-	// read the POSTed payment by decoding it from JSON
+	// Decode the request body into payment struct and failed if any error occur
 	var payment models.Payment
 	if err := json.NewDecoder(r.Body).Decode(&payment); err != nil {
 		if response, err := json.Marshal(utils.Response{Errors: []string{utils.ERROR_INVALID_JSON}}); err != nil {
@@ -35,7 +37,7 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// select the requested payment from the db
+	// Verify if the requested payment already exists in DB
 	if err := utils.GetDB().Where("ID = ?", payment.ID).First(&payment).Error; !gorm.IsRecordNotFoundError(err) {
 		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_PAYMENT_ALREADY_EXISTS}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -50,6 +52,7 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Creates the payment in DB
 	if utils.GetDB().Create(&payment).Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -60,21 +63,26 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
+// GetPayments handler to get all payments
+// Returns all payments from database
 var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 
 	var payments []models.Payment
 
+	// Fetch all payments from DB
 	if err := utils.GetDB().Set("gorm:auto_preload", true).Find(&payments).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	// Encode the payments to JSON
 	data, err := json.Marshal(payments)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	// Create the API response
 	response, err := json.Marshal(utils.Response{
 		Data: data,
 		Links: []utils.Link{{
@@ -86,6 +94,7 @@ var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	// write the response
 	w.Header().Add("Content-Type", "application/json")
 
@@ -96,9 +105,11 @@ var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetPayment handler to get a single payment
+// Receives the payment id and returns the payment
 var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 
-	// read the ID from the mux vars
+	// Read the ID from the mux vars
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok { // this should not be possible as muxer will only route requests with an ID
@@ -106,7 +117,7 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse the supplied UUID
+	// Parse the UUID
 	uuid, err := uuid.FromString(id)
 	if err != nil {
 		// write an error response indicating the UUID was invalid
@@ -125,7 +136,7 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 
 	var payment models.Payment
 
-	// select the requested payment from the db
+	// Fetch the requested payment from the db
 	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&payment).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
 			if response, err := json.Marshal(utils.Response{Errors: []string{utils.ERROR_RESOURCE_NOT_FOUND}}); err != nil {
@@ -144,14 +155,14 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// encode the query result
+	// Encode the payment to JSON
 	data, err := json.Marshal(payment)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// build the API response
+	// Create the API response
 	response, err := json.Marshal(utils.Response{
 		Data: data,
 		Links: []utils.Link{{
@@ -171,9 +182,11 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// UpdatePayment handler update a single payment
+// Receives payment id and updates the payment in database
 var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 
-	// grab ID
+	// Read the ID from the mux vars
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok { // the muxer should not assign this handler if the id is missing, so internal error
@@ -181,7 +194,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse ID as UUID
+	// Parse the UUID
 	uuid, err := uuid.FromString(id)
 	if err != nil {
 		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_REQUESTED_UUID_INVALID}}); err != nil {
@@ -196,6 +209,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Decode the request body into payment struct and failed if any error occur
 	var payment models.Payment
 	if err := json.NewDecoder(r.Body).Decode(&payment); err != nil {
 		if response, err := json.Marshal(utils.Response{Errors: []string{utils.ERROR_INVALID_JSON}}); err != nil {
@@ -210,7 +224,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ensure the payment being updated matches the one specified in the URL
+	// Ensure the payment being updated matches the one specified in the URL
 	if payment.ID.String() != uuid.String() {
 		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_ID_MISMATCH}}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -224,7 +238,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check the payment exists before editing/replacing it
+	// Verify if the payment exists before editing/replacing it
 	var oldPayment models.Payment
 
 	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&oldPayment).Error; err != nil {
@@ -238,7 +252,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	oldPayment = payment
-
+	// Update the payment in DB
 	if err := utils.GetDB().Save(&oldPayment).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -249,7 +263,11 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// DeletePayment handler to delete a single payment
+// Receives the payment id and deletes the payment in database
 var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
+
+	// Read the ID from the mux vars
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok { // the muxer should not assign this handler if the id is missing, so internal error
@@ -257,7 +275,7 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse ID as UUID
+	// Parse the UUID
 	uuid, err := uuid.FromString(id)
 	if err != nil {
 		if response, err := json.Marshal(utils.Response{Errors: []string{ERROR_REQUESTED_UUID_INVALID}}); err != nil {
@@ -272,7 +290,7 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check the payment exists before attempting to delete it
+	// Verify if the payment exists before attempting to delete it
 	payment := models.Payment{
 		ID: uuid,
 	}
@@ -290,11 +308,12 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// delete the payment
+	// Delete the payment
 	if err := utils.GetDB().Delete(&payment).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	// Write response
 	w.WriteHeader(http.StatusNoContent)
 }

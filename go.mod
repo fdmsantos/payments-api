@@ -9,5 +9,6 @@ require (
 	github.com/lib/pq v1.0.0 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.3.0
-	golang.org/x/crypto v0.0.0-20190225124518-7f87c0fbb88b
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+	golang.org/x/tools v0.0.0-20190326190820-ca36ab2721ce // indirect
 )

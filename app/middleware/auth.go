@@ -19,10 +19,13 @@ var JwtAuthentication = func(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		notAuth := []string{"/v1/user", "/v1/user/login", "/v1/health"} //List of endpoints that doesn't require auth
-		requestPath := r.URL.Path                                       //current request path
+		// List of endpoints that doesn't require auth
+		notAuth := []string{"/v1/user", "/v1/user/login", "/v1/health"}
 
-		//check if request does not need authentication, serve the request if it doesn't need it
+		// Current Request Path
+		requestPath := r.URL.Path
+
+		// Check if request does not need authentication, serve the request if it doesn't need it
 		for _, value := range notAuth {
 
 			if value == requestPath {
@@ -31,8 +34,11 @@ var JwtAuthentication = func(next http.Handler) http.Handler {
 			}
 		}
 
-		tokenHeader := r.Header.Get("Authorization") //Grab the token from the header
-		if tokenHeader == "" {                       //Token is missing, returns with error code 403 Unauthorized
+		// Grab the token from the header
+		tokenHeader := r.Header.Get("Authorization")
+
+		// Token is missing, returns with error code 403 Unauthorized
+		if tokenHeader == "" {
 
 			if response, err := json.Marshal(u.Response{Errors: []string{ERROR_MISSING_TOKEN}}); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -44,7 +50,8 @@ var JwtAuthentication = func(next http.Handler) http.Handler {
 			return
 		}
 
-		splitted := strings.Split(tokenHeader, " ") //The token normally comes in format `Bearer {token-body}`, we check if the retrieved token matched this requirement
+		// The token normally comes in format `Bearer {token-body}`, we check if the retrieved token matched this requirement
+		splitted := strings.Split(tokenHeader, " ")
 		if len(splitted) != 2 {
 			if response, err := json.Marshal(u.Response{Errors: []string{ERROR_MALFORMED_TOKEN}}); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -56,14 +63,16 @@ var JwtAuthentication = func(next http.Handler) http.Handler {
 			return
 		}
 
-		tokenPart := splitted[1] //Grab the token part, what we are truly interested in
+		// Grab the token part, what we are truly interested in
+		tokenPart := splitted[1]
 		tk := &models.Token{}
 
 		token, err := jwt.ParseWithClaims(tokenPart, tk, func(token *jwt.Token) (interface{}, error) {
 			return []byte(os.Getenv("token_password")), nil
 		})
 
-		if err != nil { //Malformed token, returns with http code 403 as usual
+		// Malformed token, returns with http code 403
+		if err != nil {
 			if response, err := json.Marshal(u.Response{Errors: []string{ERROR_MALFORMED_TOKEN}}); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			} else {
@@ -74,7 +83,8 @@ var JwtAuthentication = func(next http.Handler) http.Handler {
 			return
 		}
 
-		if !token.Valid { //Token is invalid, maybe not signed on this server
+		// Token is invalid, maybe not signed on this server
+		if !token.Valid {
 			if response, err := json.Marshal(u.Response{Errors: []string{ERROR_TOKEN_INVALID}}); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			} else {
@@ -85,9 +95,11 @@ var JwtAuthentication = func(next http.Handler) http.Handler {
 			return
 		}
 
-		//Everything went well, proceed with the request and set the caller to the user retrieved from the parsed token
+		// Everything is OK, proceed with the request and set the caller to the user retrieved from the parsed token
 		ctx := context.WithValue(r.Context(), "user", tk.UserId)
 		r = r.WithContext(ctx)
-		next.ServeHTTP(w, r) //proceed in the middleware chain!
+
+		// Proceed in the middleware chain!
+		next.ServeHTTP(w, r)
 	})
 }

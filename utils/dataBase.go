@@ -10,6 +10,8 @@ import (
 var db *gorm.DB
 
 func init() {
+
+	// Read Environment DB Variables
 	username := os.Getenv("DB_USER")
 	password := os.Getenv("DB_PASS")
 	dbName := os.Getenv("DB_NAME")
@@ -17,6 +19,7 @@ func init() {
 	dbPort := os.Getenv("DB_PORT")
 
 	for {
+		// Waits from DB is UP
 		dbUri := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable password=%s", dbHost, dbPort, username, dbName, password)
 		conn, err := gorm.Open("postgres", dbUri)
 		if err != nil {
@@ -29,7 +32,7 @@ func init() {
 
 }
 
-//returns a handle to the DB object
+// Returns a handle to the DB object
 func GetDB() *gorm.DB {
 	return db
 }

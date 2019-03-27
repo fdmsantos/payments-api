@@ -6,6 +6,7 @@ import (
 	"payments/app/controllers"
 )
 
+// Handlers
 var Routes = func(router *mux.Router) {
 	router.HandleFunc("/v1/user", controllers.CreateAccount).Methods(http.MethodPost)
 	router.HandleFunc("/v1/user/login", controllers.Authenticate).Methods(http.MethodPost)
