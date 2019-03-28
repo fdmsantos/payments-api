@@ -17,12 +17,12 @@ type Link struct {
 	Href string `json:"href"`
 }
 
-// Function to convert a string Id to UUID
+// ConvertStringToUUID convert a string Id to UUID
 func ConvertStringToUUID(id string) (uuid.UUID, error) {
 	return uuid.FromString(id)
 }
 
-// Function to create an error response
+// CreateErrorResponse to create an error response
 func CreateErrorResponse(w http.ResponseWriter, error string, httpStatusCode int) {
 	// write an error response
 	if response, err := json.Marshal(Response{Errors: []string{error}}); err != nil {

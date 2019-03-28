@@ -2,22 +2,13 @@ package controllers
 
 import (
 	"encoding/json"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/jinzhu/gorm"
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
-	"os"
 	"payments/app/models"
 	"payments/utils"
-	"strings"
-	"time"
 )
 
-const ERROR_EMAIL_REQUIRED = "Email address is required"
 const ERROR_PASSWORD_REQUIRED = "Password is required"
-const ERROR_EMAIL_EXISTS = "Email address already in use by another user"
 const ERROR_EMAIL_NON_EXISTS = "Email address not found"
-const ERROR_INVALID_LOGIN = "Invalid login credentials. Please try again"
 
 // CreateAccount handler to create new user
 // Receives email and password and create a new user in accounts table
@@ -30,36 +21,27 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if Email contains @ character
-	if !strings.Contains(account.Email, "@") {
-		utils.CreateErrorResponse(w, ERROR_EMAIL_REQUIRED, http.StatusBadRequest)
+	// Check if Email is valid
+	if err := account.IsEmailValid(); err != nil {
+		if err.Error() != utils.ERROR_SERVER {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusBadRequest)
+		} else {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		}
+
 		return
 	}
 
 	// Check if Password has 6 or more characters
-	if len(account.Password) < 6 {
+	if !account.IsPasswordValid() {
 		utils.CreateErrorResponse(w, ERROR_PASSWORD_REQUIRED, http.StatusBadRequest)
 		return
 	}
 
-	// Email must be unique
-	temp := models.Account{}
-
-	// Check for errors and duplicate emails
-	err := utils.GetDB().Table("accounts").Where("email = ?", account.Email).First(&temp).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if temp.Email != "" {
-		utils.CreateErrorResponse(w, ERROR_EMAIL_EXISTS, http.StatusBadRequest)
-		return
-	}
-
 	// Create Hashed password
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(account.Password), bcrypt.DefaultCost)
-	account.Password = string(hashedPassword)
+	if err := account.CreateHashedPassword(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 
 	// Create Account
 	if utils.GetDB().Create(&account).Error != nil {
@@ -67,20 +49,10 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create new JWT token for the newly registered account
-	tk := &models.Token{
-		UserId: account.ID,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 12).Unix(),
-		}}
-	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), tk)
-	tokenString, _ := token.SignedString([]byte(os.Getenv("token_password")))
-	account.Token = tokenString
-
+	account.CreateToken()
 	account.Password = "" // Delete password
 
 	data, err := json.Marshal(&account)
-
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -112,20 +84,23 @@ var Authenticate = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account := models.Account{}
-
 	// Verify if email exists
-	if err := utils.GetDB().Table("accounts").Where("email = ?", request.Email).First(&account).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
-			utils.CreateErrorResponse(w, ERROR_EMAIL_NON_EXISTS, http.StatusBadRequest)
-		}
+	account, err := models.GetAccountByEmail(request.Email)
+	if err != nil {
+		utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if account.Email == "" {
+		utils.CreateErrorResponse(w, ERROR_EMAIL_NON_EXISTS, http.StatusBadRequest)
 		return
 	}
 
-	// Check if the password is valid
-	err := bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(request.Password))
-	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword { //Password does not match!
-		utils.CreateErrorResponse(w, ERROR_INVALID_LOGIN, http.StatusUnauthorized)
+	if err := account.CheckPassword(request.Password); err != nil {
+		if err.Error() != utils.ERROR_SERVER {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusUnauthorized)
+		} else {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		}
+
 		return
 	}
 
@@ -133,14 +108,7 @@ var Authenticate = func(w http.ResponseWriter, r *http.Request) {
 	account.Password = ""
 
 	// Create JWT token
-	tk := &models.Token{
-		UserId: account.ID,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 12).Unix(),
-		}}
-	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), tk)
-	tokenString, _ := token.SignedString([]byte(os.Getenv("token_password")))
-	account.Token = tokenString //Store the token in the response
+	account.CreateToken()
 
 	message, err := json.Marshal(&account)
 
