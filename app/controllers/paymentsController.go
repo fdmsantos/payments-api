@@ -4,14 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	"net/http"
 	"payments/app/models"
 	"payments/utils"
 )
-
-const ERROR_PAYMENT_ALREADY_EXISTS = "Payment already exists with that ID"
-const ERROR_ID_MISMATCH = "Mismatching IDs"
 
 // CreatePayment handler to create a single payment
 // Receives the payment and inserts in database
@@ -27,8 +23,8 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify if the requested payment already exists in DB
-	if err := utils.GetDB().Where("ID = ?", payment.ID).First(&payment).Error; !gorm.IsRecordNotFoundError(err) {
-		utils.CreateErrorResponse(w, ERROR_PAYMENT_ALREADY_EXISTS, http.StatusBadRequest)
+	if _, err := models.GetPaymentByID(payment.ID); err == nil || (err != nil && err.Error() != utils.ERROR_RESOURCE_NOT_FOUND) {
+		utils.CreateErrorResponse(w, utils.ERROR_PAYMENT_ALREADY_EXISTS, http.StatusBadRequest)
 		return
 	}
 
@@ -104,15 +100,16 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payment models.Payment
+	//var payment models.Payment
 
 	// Fetch the requested payment from the db
-	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&payment).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
-			utils.CreateErrorResponse(w, utils.ERROR_RESOURCE_NOT_FOUND, http.StatusNotFound)
-			return
+	payment, err := models.GetPaymentByID(uuid)
+	if err != nil {
+		if err.Error() != utils.ERROR_SERVER {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusNotFound)
+		} else {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		}
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -171,15 +168,18 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 
 	// Ensure the payment being updated matches the one specified in the URL
 	if payment.ID.String() != uuid.String() {
-		utils.CreateErrorResponse(w, ERROR_ID_MISMATCH, http.StatusBadRequest)
+		utils.CreateErrorResponse(w, utils.ERROR_ID_MISMATCH, http.StatusBadRequest)
 		return
 	}
 
 	// Verify if the payment exists before editing/replacing it
-	var oldPayment models.Payment
-
-	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ?", uuid).First(&oldPayment).Error; err != nil {
-		utils.CreateErrorResponse(w, utils.ERROR_RESOURCE_NOT_FOUND, http.StatusNotFound)
+	oldPayment, err := models.GetPaymentByID(uuid)
+	if err != nil {
+		if err.Error() != utils.ERROR_SERVER {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusNotFound)
+		} else {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -215,12 +215,14 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify if the payment exists before attempting to delete it
-	payment := models.Payment{
-		ID: uuid,
-	}
 
-	if err := utils.GetDB().Where("ID = ?", uuid).First(&payment).Error; err != nil {
-		utils.CreateErrorResponse(w, utils.ERROR_RESOURCE_NOT_FOUND, http.StatusNotFound)
+	payment, err := models.GetPaymentByID(uuid)
+	if err != nil {
+		if err.Error() != utils.ERROR_SERVER {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusNotFound)
+		} else {
+			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
