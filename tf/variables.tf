@@ -3,21 +3,36 @@ variable "aws_region" {
 }
 
 variable "vpc_cidr" {
-  default = "11.0.0.0/16"
+  default = "10.0.0.0/16"
 }
 
 variable "public_subnets" {
   type    = "list"
-  default = [ "11.0.0.0/20", "11.0.32.0/20" ]
+  default = [ "10.0.0.0/20", "10.0.32.0/20" ]
 }
 
 variable "env" {
   default = "dev"
 }
 
-variable "name" {
-  default = "payments-database"
+variable "api_name" {
+  default = "payment-api"
 }
+
+variable "container_port" {
+  default = 8000
+}
+
+variable "db_pass" {
+}
+
+variable "repository" {
+}
+
+variable "image_tag" {
+  default = "v1"
+}
+
 
 variable "db_storage" {
   default = 20
@@ -35,10 +50,6 @@ variable "db_instance_class" {
   default = "db.t2.micro"
 }
 
-variable "db_identifier" {
-  default = "payments-api-database"
-}
-
 variable "db_name" {
 }
 
@@ -48,4 +59,8 @@ variable "db_username" {
 
 variable "db_password" {
 
+}
+
+variable "db_port" {
+  default = "5432"
 }
