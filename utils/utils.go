@@ -2,6 +2,8 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/satori/go.uuid"
+	"net/http"
 )
 
 type Response struct {
@@ -13,4 +15,24 @@ type Response struct {
 type Link struct {
 	Rel  string `json:"rel"`
 	Href string `json:"href"`
+}
+
+// Function to convert a string Id to UUID
+func ConvertStringToUUID(id string) (uuid.UUID, error) {
+	return uuid.FromString(id)
+}
+
+// Function to create an error response
+func CreateErrorResponse(w http.ResponseWriter, error string, httpStatusCode int) {
+	// write an error response
+	if response, err := json.Marshal(Response{Errors: []string{error}}); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(httpStatusCode)
+		_, err = w.Write(response)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
 }

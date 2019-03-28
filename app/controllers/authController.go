@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"payments/app/models"
-	u "payments/utils"
+	"payments/utils"
 	"strings"
 	"time"
 )
@@ -23,61 +23,37 @@ const ERROR_INVALID_LOGIN = "Invalid login credentials. Please try again"
 // Receives email and password and create a new user in accounts table
 var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 
-	account := &models.Account{}
+	account := models.Account{}
 	// Decode the request body into struct and failed if any error occur
-	err := json.NewDecoder(r.Body).Decode(account)
-	if err != nil {
-		if response, err := json.Marshal(u.Response{Errors: []string{u.ERROR_INVALID_JSON}}); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(response)
-		}
+	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+		utils.CreateErrorResponse(w, utils.ERROR_INVALID_JSON, http.StatusBadRequest)
 		return
 	}
 
 	// Check if Email contains @ character
 	if !strings.Contains(account.Email, "@") {
-		if response, err := json.Marshal(u.Response{Errors: []string{ERROR_EMAIL_REQUIRED}}); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(response)
-		}
+		utils.CreateErrorResponse(w, ERROR_EMAIL_REQUIRED, http.StatusBadRequest)
 		return
 	}
 
 	// Check if Password has 6 or more characters
 	if len(account.Password) < 6 {
-		if response, err := json.Marshal(u.Response{Errors: []string{ERROR_PASSWORD_REQUIRED}}); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(response)
-		}
+		utils.CreateErrorResponse(w, ERROR_PASSWORD_REQUIRED, http.StatusBadRequest)
 		return
 	}
 
 	// Email must be unique
-	temp := &models.Account{}
+	temp := models.Account{}
 
 	// Check for errors and duplicate emails
-	err = u.GetDB().Table("accounts").Where("email = ?", account.Email).First(temp).Error
+	err := utils.GetDB().Table("accounts").Where("email = ?", account.Email).First(&temp).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	if temp.Email != "" {
-		if response, err := json.Marshal(u.Response{Errors: []string{ERROR_EMAIL_EXISTS}}); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(response)
-		}
+		utils.CreateErrorResponse(w, ERROR_EMAIL_EXISTS, http.StatusBadRequest)
 		return
 	}
 
@@ -86,7 +62,7 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 	account.Password = string(hashedPassword)
 
 	// Create Account
-	if u.GetDB().Create(account).Error != nil {
+	if utils.GetDB().Create(&account).Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -103,14 +79,14 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 
 	account.Password = "" // Delete password
 
-	data, err := json.Marshal(account)
+	data, err := json.Marshal(&account)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	response, err := json.Marshal(u.Response{
+	response, err := json.Marshal(utils.Response{
 		Data: data,
 	})
 
@@ -129,46 +105,27 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 // Receives email and password and return token if user was authenticated with successfully
 var Authenticate = func(w http.ResponseWriter, r *http.Request) {
 
-	request := &models.Account{}
+	request := models.Account{}
 	// Decode the request body into struct and failed if any error occur
-	err := json.NewDecoder(r.Body).Decode(request)
-	if err != nil {
-		if response, err := json.Marshal(u.Response{Errors: []string{u.ERROR_INVALID_JSON}}); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(response)
-		}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		utils.CreateErrorResponse(w, utils.ERROR_INVALID_JSON, http.StatusBadRequest)
 		return
 	}
 
-	account := &models.Account{}
+	account := models.Account{}
 
 	// Verify if email exists
-	if err := u.GetDB().Table("accounts").Where("email = ?", request.Email).First(account).Error; err != nil {
+	if err := utils.GetDB().Table("accounts").Where("email = ?", request.Email).First(&account).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
-			if response, err := json.Marshal(u.Response{Errors: []string{ERROR_EMAIL_NON_EXISTS}}); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				w.Header().Add("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write(response)
-			}
+			utils.CreateErrorResponse(w, ERROR_EMAIL_NON_EXISTS, http.StatusBadRequest)
 		}
 		return
 	}
 
 	// Check if the password is valid
-	err = bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(request.Password))
+	err := bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(request.Password))
 	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword { //Password does not match!
-		if response, err := json.Marshal(u.Response{Errors: []string{ERROR_INVALID_LOGIN}}); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write(response)
-		}
+		utils.CreateErrorResponse(w, ERROR_INVALID_LOGIN, http.StatusUnauthorized)
 		return
 	}
 
@@ -185,14 +142,14 @@ var Authenticate = func(w http.ResponseWriter, r *http.Request) {
 	tokenString, _ := token.SignedString([]byte(os.Getenv("token_password")))
 	account.Token = tokenString //Store the token in the response
 
-	message, err := json.Marshal(account)
+	message, err := json.Marshal(&account)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	response, err := json.Marshal(u.Response{
+	response, err := json.Marshal(utils.Response{
 		Data: message,
 	})
 
