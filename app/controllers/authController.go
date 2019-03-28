@@ -7,9 +7,6 @@ import (
 	"payments/utils"
 )
 
-const ERROR_PASSWORD_REQUIRED = "Password is required"
-const ERROR_EMAIL_NON_EXISTS = "Email address not found"
-
 // CreateAccount handler to create new user
 // Receives email and password and create a new user in accounts table
 var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +31,7 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 
 	// Check if Password has 6 or more characters
 	if !account.IsPasswordValid() {
-		utils.CreateErrorResponse(w, ERROR_PASSWORD_REQUIRED, http.StatusBadRequest)
+		utils.CreateErrorResponse(w, utils.ERROR_PASSWORD_REQUIRED, http.StatusBadRequest)
 		return
 	}
 
@@ -90,7 +87,7 @@ var Authenticate = func(w http.ResponseWriter, r *http.Request) {
 		utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else if account.Email == "" {
-		utils.CreateErrorResponse(w, ERROR_EMAIL_NON_EXISTS, http.StatusBadRequest)
+		utils.CreateErrorResponse(w, utils.ERROR_EMAIL_NON_EXISTS, http.StatusBadRequest)
 		return
 	}
 

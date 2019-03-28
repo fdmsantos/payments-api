@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-const ERROR_EMAIL_REQUIRED = "Email address is required"
-const ERROR_EMAIL_ALREADY_EXISTS = "Email address already in use by another user"
-const ERROR_INVALID_LOGIN = "Invalid login credentials. Please try again"
-
 /*
 JWT claims struct
 */
@@ -46,7 +42,7 @@ func (a *Account) CreateToken() {
 func (a *Account) IsEmailValid() error {
 	// Check if Email contains @ character
 	if !strings.Contains(a.Email, "@") {
-		return errors.New(ERROR_EMAIL_REQUIRED)
+		return errors.New(utils.ERROR_EMAIL_REQUIRED)
 	}
 
 	// Email must be unique
@@ -56,7 +52,7 @@ func (a *Account) IsEmailValid() error {
 	}
 
 	if tempAccount.Email != "" {
-		return errors.New(ERROR_EMAIL_ALREADY_EXISTS)
+		return errors.New(utils.ERROR_EMAIL_ALREADY_EXISTS)
 	}
 
 	return nil
@@ -81,7 +77,7 @@ func (a *Account) CreateHashedPassword() error {
 func (a *Account) CheckPassword(password string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(a.Password), []byte(password))
 	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword { //Password does not match!
-		return errors.New(ERROR_INVALID_LOGIN)
+		return errors.New(utils.ERROR_INVALID_LOGIN)
 	}
 	if err != nil {
 		return errors.New(utils.ERROR_SERVER)
