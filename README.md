@@ -9,11 +9,11 @@ Api Design: [click me](Form3-Payments-api.pdf)
 ```sh
 git clone https://github.com/fdmsantos/payments-api
 cd payments-api
-docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres
+docker run -it -p 5432:5432 -e POSTGRES_PASSWORD="api" -e POSTGRES_DB="api" -e POSTGRES_USER="api" --name postgresDB -d  postgres
 export DB_HOST=localhost
-export DB_NAME=paymentsapi
-export DB_USER=postgres
-export DB_PASS=mysecretpassword
+export DB_NAME=api
+export DB_USER=api
+export DB_PASS=api
 export DB_PORT=5432
 go test ./...
 ```

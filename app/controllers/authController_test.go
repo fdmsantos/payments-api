@@ -40,7 +40,7 @@ func TestCreateAccountWithInvalidEmail(t *testing.T) {
 	validateHeaderContenType(t, rw)
 	response := decodeApiResponse(t, rw)
 
-	assert.EqualValues(t, []string{ERROR_EMAIL_REQUIRED}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_EMAIL_REQUIRED}, response.Errors)
 }
 
 func TestCreateAccountWithInvalidPassword(t *testing.T) {
@@ -60,7 +60,7 @@ func TestCreateAccountWithInvalidPassword(t *testing.T) {
 	validateHeaderContenType(t, rw)
 	response := decodeApiResponse(t, rw)
 
-	assert.EqualValues(t, []string{ERROR_PASSWORD_REQUIRED}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_PASSWORD_REQUIRED}, response.Errors)
 }
 
 func TestCreateAccountWithExistsEmail(t *testing.T) {
@@ -86,7 +86,7 @@ func TestCreateAccountWithExistsEmail(t *testing.T) {
 	validateHeaderContenType(t, rw)
 	response := decodeApiResponse(t, rw)
 
-	assert.EqualValues(t, []string{ERROR_EMAIL_EXISTS}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_EMAIL_ALREADY_EXISTS}, response.Errors)
 }
 
 func TestCreateAccount(t *testing.T) {
@@ -160,7 +160,7 @@ func TestLoginWithNonExistsEmail(t *testing.T) {
 	validateHeaderContenType(t, rw)
 	response := decodeApiResponse(t, rw)
 
-	assert.EqualValues(t, []string{ERROR_EMAIL_NON_EXISTS}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_EMAIL_NON_EXISTS}, response.Errors)
 }
 
 func TestLogin(t *testing.T) {

@@ -16,7 +16,7 @@ func main() {
 	router.Use(middleware.JwtAuthentication)
 	//router.NotFoundHandler = utils.NotFoundHandler
 
-	migrateDB()
+	createDB()
 
 	err := http.ListenAndServe(":8000", router) //Launch the app, visit localhost:8000/api
 	if err != nil {
@@ -24,7 +24,8 @@ func main() {
 	}
 }
 
-func migrateDB() {
+// createDB Creates the tables on database
+func createDB() {
 	utils.GetDB().AutoMigrate(
 		&models.Account{},
 		&models.Payment{},

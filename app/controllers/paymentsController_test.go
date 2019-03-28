@@ -31,7 +31,20 @@ func TestMain(m *testing.M) {
 	router.HandleFunc("/v1/payments/{id}", GetPayment).Methods(http.MethodGet)
 	router.HandleFunc("/v1/payments/{id}", UpdatePayment).Methods(http.MethodPut)
 	router.HandleFunc("/v1/payments/{id}", DeletePayment).Methods(http.MethodDelete)
+
 	router.Use(middleware.JwtAuthentication)
+
+	//utils.GetDB().AutoMigrate(
+	//	&models.Account{},
+	//	&models.Payment{},
+	//	&models.Attributes{},
+	//	&models.BeneficiaryParty{},
+	//	&models.DebtorParty{},
+	//	&models.SponsorParty{},
+	//	&models.ChargesInformation{},
+	//	&models.Charge{},
+	//	&models.FX{},
+	//)
 
 	server = &http.Server{Addr: ":8000", Handler: router}
 
@@ -189,7 +202,6 @@ func doRequestWithoutLogin(t *testing.T, method string, url string, body io.Read
 	req.Header.Set("Content-Type", "application/json")
 	rw := httptest.NewRecorder()
 	server.Handler.ServeHTTP(rw, req)
-
 	if rw.Code != expectedResultCode {
 		t.Fatalf("Status code was not %d: %d\n", expectedResultCode, rw.Code)
 	}
@@ -326,7 +338,7 @@ func TestGetSinglePaymentForInvalidUUID(t *testing.T) {
 	validateHeaderContenType(t, rw)
 	response := decodeApiResponse(t, rw)
 
-	assert.EqualValues(t, []string{ERROR_REQUESTED_UUID_INVALID}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_REQUESTED_UUID_INVALID}, response.Errors)
 }
 
 func TestGetSinglePaymentForNonExistingPaymentWhenOtherPaymentExists(t *testing.T) {
@@ -436,7 +448,7 @@ func TestUpdateSinglePaymentWithIDThatDoesNotMatchURL(t *testing.T) {
 	rw := doRequestWithLogin(t, http.MethodPut, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
 	response := decodeApiResponse(t, rw)
 
-	assert.EqualValues(t, []string{ERROR_ID_MISMATCH}, response.Errors)
+	assert.EqualValues(t, []string{utils.ERROR_ID_MISMATCH}, response.Errors)
 }
 
 func TestUpdateNonExistentPayment(t *testing.T) {
