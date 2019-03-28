@@ -92,12 +92,7 @@ var Authenticate = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := account.CheckPassword(request.Password); err != nil {
-		if err.Error() != utils.ERROR_SERVER {
-			utils.CreateErrorResponse(w, err.Error(), http.StatusUnauthorized)
-		} else {
-			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
-		}
-
+		utils.CreateErrorResponse(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 

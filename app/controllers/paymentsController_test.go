@@ -34,17 +34,17 @@ func TestMain(m *testing.M) {
 
 	router.Use(middleware.JwtAuthentication)
 
-	//utils.GetDB().AutoMigrate(
-	//	&models.Account{},
-	//	&models.Payment{},
-	//	&models.Attributes{},
-	//	&models.BeneficiaryParty{},
-	//	&models.DebtorParty{},
-	//	&models.SponsorParty{},
-	//	&models.ChargesInformation{},
-	//	&models.Charge{},
-	//	&models.FX{},
-	//)
+	utils.GetDB().AutoMigrate(
+		&models.Account{},
+		&models.Payment{},
+		&models.Attributes{},
+		&models.BeneficiaryParty{},
+		&models.DebtorParty{},
+		&models.SponsorParty{},
+		&models.ChargesInformation{},
+		&models.Charge{},
+		&models.FX{},
+	)
 
 	server = &http.Server{Addr: ":8000", Handler: router}
 

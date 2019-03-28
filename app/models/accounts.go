@@ -79,9 +79,6 @@ func (a *Account) CheckPassword(password string) error {
 	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword { //Password does not match!
 		return errors.New(utils.ERROR_INVALID_LOGIN)
 	}
-	if err != nil {
-		return errors.New(utils.ERROR_SERVER)
-	}
 	return nil
 }
 
