@@ -270,8 +270,3 @@ curl --request DELETE \
   --url http://localhost:8000/v1/payments/216d4da9-e59a-4cc6-8df3-3da6e7580b77 \
   --header 'authorization: Bearer $token'
 ```
-
-## Future Improvements
-
-* Create Api Documentation with [swagger](https://github.com/go-swagger/go-swagger)
-* Refactoring The code. (Move Validations from Controllers to Models)

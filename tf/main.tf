@@ -8,6 +8,11 @@ data "aws_ecr_repository" "repository" {
   name = "${var.repository}"
 }
 
+// Get My Public IP To access to database
+data "http" "mypublicip" {
+  url = "http://ipv4.icanhazip.com"
+}
+
 // Create VPC
 // Module Source: https://github.com/terraform-aws-modules/terraform-aws-vpc
 module "vpc" {
@@ -29,7 +34,6 @@ module "vpc" {
 // Module Source: https://github.com/terraform-aws-modules/terraform-aws-rds
 resource "aws_security_group" "db_security_group" {
   name        = "${var.api_name}-${var.env}-db-sg"
-  depends_on  = []
   description = "Database Security Group"
   vpc_id      = "${module.vpc.vpc_id}"
 
@@ -38,6 +42,24 @@ resource "aws_security_group" "db_security_group" {
     protocol        = "tcp"
     to_port         = "${var.db_port}"
     security_groups = [ "${aws_security_group.container_security_group.id}" ] // Make database acessible by Containers
+  }
+
+  tags = {
+    Terraform   = "true"
+    Environment = "${var.env}"
+  }
+}
+
+resource "aws_security_group" "db_security_group_myaccess" {
+  name        = "${var.api_name}-${var.env}-db-sg-myaccess"
+  description = "Database Security Group to give access to my PC"
+  vpc_id      = "${module.vpc.vpc_id}"
+
+  ingress {
+    from_port       = "${var.db_port}"
+    protocol        = "tcp"
+    to_port         = "${var.db_port}"
+    cidr_blocks = ["${chomp(data.http.mypublicip.body)}/32"] // Make database acessible by Mr
   }
 
   tags = {
@@ -69,10 +91,10 @@ module "db" {
   deletion_protection     = false
 
   subnet_ids              = ["${module.vpc.public_subnets}"]
-  vpc_security_group_ids  = [ "${aws_security_group.db_security_group.id}" ]
+  vpc_security_group_ids  = [ "${aws_security_group.db_security_group.id}", "${aws_security_group.db_security_group_myaccess.id}" ]
 
   multi_az                = false
-  publicly_accessible     = false
+  publicly_accessible     = true
 
 
   tags = {
