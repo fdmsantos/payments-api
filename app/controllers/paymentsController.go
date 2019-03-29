@@ -51,11 +51,20 @@ var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create Links
+	//var links []utils.Link
 	links := []utils.Link{{
 		Rel:  "self",
 		Href: "/v1/payments",
 	}}
+	for _, payment := range payments {
+		links = append(links, utils.Link{
+			Rel:  payment.ID.String(),
+			Href: fmt.Sprintf("/v1/payments/%s", payment.ID.String()),
+		})
+	}
 
+	// Create Api Response
 	utils.CreateApiResponse(w, payments, http.StatusOK, links)
 }
 
