@@ -273,6 +273,5 @@ curl --request DELETE \
 
 ## Future Improvements
 
-* Add Log  [logrus](https://github.com/sirupsen/logrus)
 * Create Api Documentation with [swagger](https://github.com/go-swagger/go-swagger)
 * Refactoring The code. (Move Validations from Controllers to Models)
