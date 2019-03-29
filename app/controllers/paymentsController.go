@@ -18,13 +18,13 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 	// Decode the request body into payment struct and failed if any error occur
 	var payment models.Payment
 	if err := json.NewDecoder(r.Body).Decode(&payment); err != nil {
-		utils.CreateErrorResponse(w, utils.ERROR_INVALID_JSON, http.StatusBadRequest)
+		utils.CreateApiErrorResponse(w, utils.ERROR_INVALID_JSON, http.StatusBadRequest)
 		return
 	}
 
 	// Verify if the requested payment already exists in DB
 	if _, err := models.GetPaymentByID(payment.ID); err == nil || (err != nil && err.Error() != utils.ERROR_RESOURCE_NOT_FOUND) {
-		utils.CreateErrorResponse(w, utils.ERROR_PAYMENT_ALREADY_EXISTS, http.StatusBadRequest)
+		utils.CreateApiErrorResponse(w, utils.ERROR_PAYMENT_ALREADY_EXISTS, http.StatusBadRequest)
 		return
 	}
 
@@ -51,34 +51,12 @@ var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Encode the payments to JSON
-	data, err := json.Marshal(payments)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	links := []utils.Link{{
+		Rel:  "self",
+		Href: "/v1/payments",
+	}}
 
-	// Create the API response
-	response, err := json.Marshal(utils.Response{
-		Data: data,
-		Links: []utils.Link{{
-			Rel:  "self",
-			Href: "/v1/payments",
-		}}})
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// write the response
-	w.Header().Add("Content-Type", "application/json")
-
-	_, err = w.Write(response)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	utils.CreateApiResponse(w, payments, http.StatusOK, links)
 }
 
 // GetPayment handler to get a single payment
@@ -96,48 +74,28 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 	// Parse the UUID
 	uuid, err := utils.ConvertStringToUUID(id)
 	if err != nil {
-		utils.CreateErrorResponse(w, utils.ERROR_REQUESTED_UUID_INVALID, http.StatusBadRequest)
+		utils.CreateApiErrorResponse(w, utils.ERROR_REQUESTED_UUID_INVALID, http.StatusBadRequest)
 		return
 	}
-
-	//var payment models.Payment
 
 	// Fetch the requested payment from the db
 	payment, err := models.GetPaymentByID(uuid)
 	if err != nil {
 		if err.Error() != utils.ERROR_SERVER {
-			utils.CreateErrorResponse(w, err.Error(), http.StatusNotFound)
+			utils.CreateApiErrorResponse(w, err.Error(), http.StatusNotFound)
 		} else {
-			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
+			utils.CreateApiErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 
-	// Encode the payment to JSON
-	data, err := json.Marshal(payment)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	// Create Api Response
+	links := []utils.Link{{
+		Rel:  "self",
+		Href: fmt.Sprintf("/v1/payments/%s", payment.ID.String()),
+	}}
 
-	// Create the API response
-	response, err := json.Marshal(utils.Response{
-		Data: data,
-		Links: []utils.Link{{
-			Rel:  "self",
-			Href: fmt.Sprintf("/v1/payments/%s", payment.ID.String()),
-		}}})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// write the response
-	w.Header().Add("Content-Type", "application/json")
-	_, err = w.Write(response)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	utils.CreateApiResponse(w, payment, http.StatusOK, links)
 }
 
 // UpdatePayment handler update a single payment
@@ -155,20 +113,20 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 	// Parse the UUID
 	uuid, err := utils.ConvertStringToUUID(id)
 	if err != nil {
-		utils.CreateErrorResponse(w, utils.ERROR_REQUESTED_UUID_INVALID, http.StatusBadRequest)
+		utils.CreateApiErrorResponse(w, utils.ERROR_REQUESTED_UUID_INVALID, http.StatusBadRequest)
 		return
 	}
 
 	// Decode the request body into payment struct and failed if any error occur
 	var payment models.Payment
 	if err := json.NewDecoder(r.Body).Decode(&payment); err != nil {
-		utils.CreateErrorResponse(w, utils.ERROR_INVALID_JSON, http.StatusBadRequest)
+		utils.CreateApiErrorResponse(w, utils.ERROR_INVALID_JSON, http.StatusBadRequest)
 		return
 	}
 
 	// Ensure the payment being updated matches the one specified in the URL
 	if payment.ID.String() != uuid.String() {
-		utils.CreateErrorResponse(w, utils.ERROR_ID_MISMATCH, http.StatusBadRequest)
+		utils.CreateApiErrorResponse(w, utils.ERROR_ID_MISMATCH, http.StatusBadRequest)
 		return
 	}
 
@@ -176,9 +134,9 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 	oldPayment, err := models.GetPaymentByID(uuid)
 	if err != nil {
 		if err.Error() != utils.ERROR_SERVER {
-			utils.CreateErrorResponse(w, err.Error(), http.StatusNotFound)
+			utils.CreateApiErrorResponse(w, err.Error(), http.StatusNotFound)
 		} else {
-			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
+			utils.CreateApiErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -210,7 +168,7 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 	// Parse the UUID
 	uuid, err := utils.ConvertStringToUUID(id)
 	if err != nil {
-		utils.CreateErrorResponse(w, utils.ERROR_REQUESTED_UUID_INVALID, http.StatusBadRequest)
+		utils.CreateApiErrorResponse(w, utils.ERROR_REQUESTED_UUID_INVALID, http.StatusBadRequest)
 		return
 	}
 
@@ -219,9 +177,9 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 	payment, err := models.GetPaymentByID(uuid)
 	if err != nil {
 		if err.Error() != utils.ERROR_SERVER {
-			utils.CreateErrorResponse(w, err.Error(), http.StatusNotFound)
+			utils.CreateApiErrorResponse(w, err.Error(), http.StatusNotFound)
 		} else {
-			utils.CreateErrorResponse(w, err.Error(), http.StatusInternalServerError)
+			utils.CreateApiErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
