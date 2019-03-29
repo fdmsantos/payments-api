@@ -13,6 +13,8 @@ import (
 // Receives the payment and inserts in database
 var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 
+	utils.LogApiRequest(r)
+
 	//user := r.Context().Value("user") . (uint) //Grab the id of the user that send the request
 
 	// Decode the request body into payment struct and failed if any error occur
@@ -34,14 +36,19 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-	w.Header().Add("Location", fmt.Sprintf("/v1/payments/%s", payment.ID.String()))
-	w.WriteHeader(http.StatusCreated)
+	// Create Api Response
+	links := []utils.Link{{
+		Rel:  "self",
+		Href: fmt.Sprintf("/v1/payments/%s", payment.ID.String()),
+	}}
+	utils.CreateApiResponse(w, nil, http.StatusCreated, links)
 }
 
 // GetPayments handler to get all payments
 // Returns all payments from database
 var GetPayments = func(w http.ResponseWriter, r *http.Request) {
+
+	utils.LogApiRequest(r)
 
 	var payments []models.Payment
 
@@ -52,7 +59,6 @@ var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create Links
-	//var links []utils.Link
 	links := []utils.Link{{
 		Rel:  "self",
 		Href: "/v1/payments",
@@ -71,6 +77,8 @@ var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 // GetPayment handler to get a single payment
 // Receives the payment id and returns the payment
 var GetPayment = func(w http.ResponseWriter, r *http.Request) {
+
+	utils.LogApiRequest(r)
 
 	// Read the ID from the mux vars
 	vars := mux.Vars(r)
@@ -110,6 +118,8 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 // UpdatePayment handler update a single payment
 // Receives payment id and updates the payment in database
 var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
+
+	utils.LogApiRequest(r)
 
 	// Read the ID from the mux vars
 	vars := mux.Vars(r)
@@ -157,14 +167,19 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// write response
-	w.Header().Add("Location", fmt.Sprintf("/v1/payments/%s", payment.ID.String()))
-	w.WriteHeader(http.StatusNoContent)
+	// Create Api Response
+	links := []utils.Link{{
+		Rel:  "self",
+		Href: fmt.Sprintf("/v1/payments/%s", payment.ID.String()),
+	}}
+	utils.CreateApiResponse(w, nil, http.StatusOK, links)
 }
 
 // DeletePayment handler to delete a single payment
 // Receives the payment id and deletes the payment in database
 var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
+
+	utils.LogApiRequest(r)
 
 	// Read the ID from the mux vars
 	vars := mux.Vars(r)
@@ -199,6 +214,6 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Write response
-	w.WriteHeader(http.StatusNoContent)
+	// Create Api Response
+	utils.CreateApiResponse(w, nil, http.StatusNoContent, nil)
 }

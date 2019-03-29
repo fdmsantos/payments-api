@@ -11,6 +11,8 @@ import (
 // Receives email and password and create a new user in accounts table
 var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 
+	utils.LogApiRequest(r)
+
 	account := models.Account{}
 	// Decode the request body into struct and failed if any error occur
 	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
@@ -50,13 +52,14 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 	account.Password = "" // Delete password
 
 	// Create Api Response
-	var links []utils.Link
-	utils.CreateApiResponse(w, account, http.StatusCreated, links)
+	utils.CreateApiResponse(w, account, http.StatusCreated, nil)
 }
 
 // Authenticate handler to login user
 // Receives email and password and return token if user was authenticated with successfully
 var Authenticate = func(w http.ResponseWriter, r *http.Request) {
+
+	utils.LogApiRequest(r)
 
 	request := models.Account{}
 	// Decode the request body into struct and failed if any error occur
@@ -88,6 +91,5 @@ var Authenticate = func(w http.ResponseWriter, r *http.Request) {
 	account.CreateToken()
 
 	// Create Api Response
-	var links []utils.Link
-	utils.CreateApiResponse(w, account, http.StatusOK, links)
+	utils.CreateApiResponse(w, account, http.StatusOK, nil)
 }

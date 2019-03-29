@@ -27,29 +27,40 @@ func CreateApiErrorResponse(w http.ResponseWriter, error string, httpStatusCode 
 	// write an error response
 	if response, err := json.Marshal(Response{Errors: []string{error}}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		LogError(http.StatusInternalServerError, err.Error())
 	} else {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(httpStatusCode)
 		_, err = w.Write(response)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			LogError(http.StatusInternalServerError, err.Error())
+		} else {
+			LogApiBadRequestResponse(httpStatusCode, response)
 		}
 	}
 }
 
 func CreateApiResponse(w http.ResponseWriter, response interface{}, httpStatusCode int, links []Link) {
 
-	// Encode the response to JSON
-	data, err := json.Marshal(response)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	var apiResponse Response
+	if response != nil {
+		// Encode the response to JSON
+		data, err := json.Marshal(response)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		apiResponse.Data = data
+
 	}
 
-	apiResponse, err := json.Marshal(Response{
-		Data:  data,
-		Links: links,
-	})
+	if links != nil {
+		apiResponse.Links = links
+	}
+
+	apiJson, err := json.Marshal(apiResponse)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -57,10 +68,12 @@ func CreateApiResponse(w http.ResponseWriter, response interface{}, httpStatusCo
 
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(httpStatusCode)
-	_, err = w.Write(apiResponse)
+	_, err = w.Write(apiJson)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	LogApiResponse(httpStatusCode, apiJson)
 }
