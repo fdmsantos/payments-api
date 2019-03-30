@@ -33,24 +33,90 @@ See the [examples](#Examples)
 
 **Steps**
 
-1. Containerize Payment REST API application
-2. Use AWS CLI to create Amazon ECR repository
-3. Build docker image and push to ECR
-4. Create AWS infrastructure with terraform [Diagram](tf/AWSDiagram.pdf)
-5. Use ApiEndpoint Terraform Output to access to api
+- Clone Repository
 
 ```sh
 git clone https://github.com/fdmsantos/payments-api
 cd payments-api
-docker build -t payments-api .
+```
+
+- Use AWS CLI to create AWS ECR repository
+
+```sh
 aws ecr create-repository --repository-name payments-api
 aws ecr get-login --no-include-email | sh
 IMAGE_REPO=$(aws ecr describe-repositories --repository-names payments-api --query 'repositories[0].repositoryUri' --output text)
+```
+
+-  Build docker image and push to AWS ECR
+
+```sh
+docker build -t payments-api .
 docker tag payments-api:latest $IMAGE_REPO:v1
 docker push $IMAGE_REPO:v1
+```
+
+- Deploy to AWS with terraform [Aws Infrastructure Diagram](tf/AWSDiagram.pdf)
+
+```sh
 cd tf
 terraform init
 terraform apply
+```
+
+- Use ApiEndpoint Terraform Output to access to api. Should take a few seconds until the service is up.
+
+See the [examples](#Examples). Replace http://localhost:8000/v1/ by ApiEndpoint
+
+
+```sh
+http://payment-api-dev-lb-1825930896.eu-west-1.elb.amazonaws.com/v1/
+
+curl --request POST \
+  --url http://payment-api-dev-lb-634579817.eu-west-1.elb.amazonaws.com/v1/user \
+  --header 'content-type: application/json' \
+  --data '{
+	"email": "fabiosantos@gmail.com",
+	"password": "secretpassword"
+
+}'
+```
+
+- Use DatabaseEndpoint Terraform Output to connect to database. It was created a security group to give access from your PC to Database (Using your Public IP)
+
+```sh
+# Necessary have postgres client installed
+# psql -h payment-api-dev-db.culfnfuxbney.eu-west-1.rds.amazonaws.com -U api -d payments
+Password for user api: 
+psql (11.2, server 10.6)
+SSL connection (protocol: TLSv1.2, cipher: ECDHE-RSA-AES256-GCM-SHA384, bits: 256, compression: off)
+Type "help" for help.
+
+payments=> \dt
+               List of relations
+ Schema |         Name         | Type  | Owner 
+--------+----------------------+-------+-------
+ public | accounts             | table | api
+ public | attributes           | table | api
+ public | beneficiary_parties  | table | api
+ public | charges              | table | api
+ public | charges_informations | table | api
+ public | debtor_parties       | table | api
+ public | fxes                 | table | api
+ public | payments             | table | api
+ public | sponsor_parties      | table | api
+(9 rows)
+
+payments=> 
+
+```
+
+- Navigate to AWS Cloudwatch and Use CloudWathLogGroup Terraform Output to discover what is the api cloud watch group and check the logs
+
+- Destroy
+
+```sh
+terraform destroy
 ```
 
 ## Examples
