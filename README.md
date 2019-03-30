@@ -70,8 +70,6 @@ See the [examples](#Examples). Replace http://localhost:8000/v1/ by ApiEndpoint
 
 
 ```sh
-http://payment-api-dev-lb-1825930896.eu-west-1.elb.amazonaws.com/v1/
-
 curl --request POST \
   --url http://payment-api-dev-lb-634579817.eu-west-1.elb.amazonaws.com/v1/user \
   --header 'content-type: application/json' \
