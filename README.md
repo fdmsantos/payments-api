@@ -4,20 +4,6 @@ REST API built in Golang with a PostgreSQL database.
 
 Api Design: [click me](Form3-Payments-api.pdf)
 
-## Running the tests
-
-```sh
-git clone https://github.com/fdmsantos/payments-api
-cd payments-api
-docker run -it -p 5432:5432 -e POSTGRES_PASSWORD="api" -e POSTGRES_DB="api" -e POSTGRES_USER="api" --name postgresDB -d  postgres
-export DB_HOST=localhost
-export DB_NAME=api
-export DB_USER=api
-export DB_PASS=api
-export DB_PORT=5432
-go test ./...
-```
-
 ## Deployment
 
 ### Docker-Compose
@@ -269,4 +255,18 @@ curl --request GET \
 curl --request DELETE \
   --url http://localhost:8000/v1/payments/216d4da9-e59a-4cc6-8df3-3da6e7580b77 \
   --header 'authorization: Bearer $token'
+```
+
+## Running the tests
+
+```sh
+git clone https://github.com/fdmsantos/payments-api
+cd payments-api
+docker run -it -p 5432:5432 -e POSTGRES_PASSWORD="api" -e POSTGRES_DB="api" -e POSTGRES_USER="api" --name postgresDB -d  postgres
+export DB_HOST=localhost
+export DB_NAME=api
+export DB_USER=api
+export DB_PASS=api
+export DB_PORT=5432
+go test ./...
 ```
