@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/jinzhu/gorm"
 	"github.com/satori/go.uuid"
+	"payments/infrastructure"
 	"payments/utils"
 )
 
@@ -18,7 +19,7 @@ type Payment struct {
 // GetPaymentByID Get a payment model through an ID
 func GetPaymentByID(id uuid.UUID) (Payment, error) {
 	payment := Payment{}
-	if err := utils.GetDB().Set("gorm:auto_preload", true).Where("ID = ? ", id).First(&payment).Error; err != nil {
+	if err := infrastructure.GetDB().Set("gorm:auto_preload", true).Where("ID = ? ", id).First(&payment).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
 			return payment, errors.New(utils.ERROR_RESOURCE_NOT_FOUND)
 		}

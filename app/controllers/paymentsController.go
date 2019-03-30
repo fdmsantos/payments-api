@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"payments/app/models"
+	"payments/infrastructure"
 	"payments/utils"
 )
 
@@ -13,7 +14,7 @@ import (
 // Receives the payment and inserts in database
 var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 
-	utils.LogApiRequest(r)
+	infrastructure.LogApiRequest(r)
 
 	//user := r.Context().Value("user") . (uint) //Grab the id of the user that send the request
 
@@ -31,7 +32,7 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Creates the payment in DB
-	if utils.GetDB().Create(&payment).Error != nil {
+	if infrastructure.GetDB().Create(&payment).Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -48,12 +49,12 @@ var CreatePayment = func(w http.ResponseWriter, r *http.Request) {
 // Returns all payments from database
 var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 
-	utils.LogApiRequest(r)
+	infrastructure.LogApiRequest(r)
 
 	var payments []models.Payment
 
 	// Fetch all payments from DB
-	if err := utils.GetDB().Set("gorm:auto_preload", true).Find(&payments).Error; err != nil {
+	if err := infrastructure.GetDB().Set("gorm:auto_preload", true).Find(&payments).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -78,7 +79,7 @@ var GetPayments = func(w http.ResponseWriter, r *http.Request) {
 // Receives the payment id and returns the payment
 var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 
-	utils.LogApiRequest(r)
+	infrastructure.LogApiRequest(r)
 
 	// Read the ID from the mux vars
 	vars := mux.Vars(r)
@@ -119,7 +120,7 @@ var GetPayment = func(w http.ResponseWriter, r *http.Request) {
 // Receives payment id and updates the payment in database
 var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 
-	utils.LogApiRequest(r)
+	infrastructure.LogApiRequest(r)
 
 	// Read the ID from the mux vars
 	vars := mux.Vars(r)
@@ -162,7 +163,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 
 	oldPayment = payment
 	// Update the payment in DB
-	if err := utils.GetDB().Save(&oldPayment).Error; err != nil {
+	if err := infrastructure.GetDB().Save(&oldPayment).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -179,7 +180,7 @@ var UpdatePayment = func(w http.ResponseWriter, r *http.Request) {
 // Receives the payment id and deletes the payment in database
 var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 
-	utils.LogApiRequest(r)
+	infrastructure.LogApiRequest(r)
 
 	// Read the ID from the mux vars
 	vars := mux.Vars(r)
@@ -209,7 +210,7 @@ var DeletePayment = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete the payment
-	if err := utils.GetDB().Delete(&payment).Error; err != nil {
+	if err := infrastructure.GetDB().Delete(&payment).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

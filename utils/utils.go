@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/satori/go.uuid"
 	"net/http"
+	"payments/infrastructure"
 )
 
 type Response struct {
@@ -27,16 +28,16 @@ func CreateApiErrorResponse(w http.ResponseWriter, error string, httpStatusCode 
 	// write an error response
 	if response, err := json.Marshal(Response{Errors: []string{error}}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		LogError(http.StatusInternalServerError, err.Error())
+		infrastructure.LogError(http.StatusInternalServerError, err.Error())
 	} else {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(httpStatusCode)
 		_, err = w.Write(response)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			LogError(http.StatusInternalServerError, err.Error())
+			infrastructure.LogError(http.StatusInternalServerError, err.Error())
 		} else {
-			LogApiBadRequestResponse(httpStatusCode, response)
+			infrastructure.LogApiBadRequestResponse(httpStatusCode, response)
 		}
 	}
 }
@@ -75,5 +76,5 @@ func CreateApiResponse(w http.ResponseWriter, response interface{}, httpStatusCo
 		return
 	}
 
-	LogApiResponse(httpStatusCode, apiJson)
+	infrastructure.LogApiResponse(httpStatusCode, apiJson)
 }

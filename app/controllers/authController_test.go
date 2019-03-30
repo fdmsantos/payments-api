@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"payments/app/models"
+	"payments/infrastructure"
 	"payments/utils"
 	"testing"
 )
@@ -17,7 +18,7 @@ func TestCreateAccountWithInvalidBody(t *testing.T) {
 	jsonBytes := []byte("{ malformed json }")
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_INVALID_JSON}, response.Errors)
@@ -37,7 +38,7 @@ func TestCreateAccountWithInvalidEmail(t *testing.T) {
 	}
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_EMAIL_REQUIRED}, response.Errors)
@@ -57,7 +58,7 @@ func TestCreateAccountWithInvalidPassword(t *testing.T) {
 	}
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_PASSWORD_REQUIRED}, response.Errors)
@@ -65,14 +66,14 @@ func TestCreateAccountWithInvalidPassword(t *testing.T) {
 
 func TestCreateAccountWithExistsEmail(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	account := models.Account{
 		Email:    "dummyemail@dummy.com",
 		Password: "dsadasdadasd",
 	}
 
-	if err := utils.GetDB().Create(&account).Error; err != nil {
+	if err := infrastructure.GetDB().Create(&account).Error; err != nil {
 		t.Fatal(err)
 	}
 
@@ -83,14 +84,14 @@ func TestCreateAccountWithExistsEmail(t *testing.T) {
 	}
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_EMAIL_ALREADY_EXISTS}, response.Errors)
 }
 
 func TestCreateAccount(t *testing.T) {
-	deleteDatabase(t)
+	deleteDatabase()
 
 	account := models.Account{
 		Email:    "dummyemail@dummy.com",
@@ -104,7 +105,7 @@ func TestCreateAccount(t *testing.T) {
 	}
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user", bytes.NewBuffer(jsonBytes), http.StatusCreated)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	var accountNew models.Account
@@ -113,7 +114,7 @@ func TestCreateAccount(t *testing.T) {
 	}
 
 	var existingAccountInDB models.Account
-	if err := utils.GetDB().Where("ID = ?", accountNew.ID).First(&existingAccountInDB).Error; err != nil {
+	if err := infrastructure.GetDB().Where("ID = ?", accountNew.ID).First(&existingAccountInDB).Error; err != nil {
 		t.Fatal(err)
 	}
 
@@ -135,7 +136,7 @@ func TestLoginWithInvalidBody(t *testing.T) {
 	jsonBytes := []byte("{ malformed json }")
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user/login", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_INVALID_JSON}, response.Errors)
@@ -143,7 +144,7 @@ func TestLoginWithInvalidBody(t *testing.T) {
 
 func TestLoginWithNonExistsEmail(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	account := models.Account{
 		Email:    "dummyemail@dummy.com",
@@ -157,7 +158,7 @@ func TestLoginWithNonExistsEmail(t *testing.T) {
 	}
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user/login", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_EMAIL_NON_EXISTS}, response.Errors)
@@ -165,14 +166,14 @@ func TestLoginWithNonExistsEmail(t *testing.T) {
 
 func TestLogin(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	account := models.Account{
 		Email:    "dummyemail@dummy.com",
 		Password: "dummypassword",
 	}
 
-	if err := utils.GetDB().Create(&account).Error; err != nil {
+	if err := infrastructure.GetDB().Create(&account).Error; err != nil {
 		t.Fatal(err)
 	}
 
@@ -188,7 +189,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user/login", bytes.NewBuffer(jsonBytes), http.StatusOK)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	var accountLogged models.Account

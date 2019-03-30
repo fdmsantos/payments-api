@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"payments/app/models"
+	"payments/infrastructure"
 	"payments/utils"
 )
 
@@ -11,7 +12,7 @@ import (
 // Receives email and password and create a new user in accounts table
 var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 
-	utils.LogApiRequest(r)
+	infrastructure.LogApiRequest(r)
 
 	account := models.Account{}
 	// Decode the request body into struct and failed if any error occur
@@ -43,7 +44,7 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create Account
-	if utils.GetDB().Create(&account).Error != nil {
+	if infrastructure.GetDB().Create(&account).Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -59,7 +60,7 @@ var CreateAccount = func(w http.ResponseWriter, r *http.Request) {
 // Receives email and password and return token if user was authenticated with successfully
 var Authenticate = func(w http.ResponseWriter, r *http.Request) {
 
-	utils.LogApiRequest(r)
+	infrastructure.LogApiRequest(r)
 
 	request := models.Account{}
 	// Decode the request body into struct and failed if any error occur

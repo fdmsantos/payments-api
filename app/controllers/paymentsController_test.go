@@ -10,11 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"payments/app/middleware"
 	"payments/app/models"
+	"payments/infrastructure"
 	"payments/utils"
 	"testing"
 )
@@ -22,7 +24,12 @@ import (
 var server *http.Server
 
 func TestMain(m *testing.M) {
+
+	// Disable Log to Testing
+	infrastructure.GetLog().Out = ioutil.Discard
+
 	router := mux.NewRouter()
+	router.Use(middleware.JwtAuthentication)
 
 	router.HandleFunc("/v1/user", CreateAccount).Methods(http.MethodPost)
 	router.HandleFunc("/v1/user/login", Authenticate).Methods(http.MethodPost)
@@ -32,9 +39,7 @@ func TestMain(m *testing.M) {
 	router.HandleFunc("/v1/payments/{id}", UpdatePayment).Methods(http.MethodPut)
 	router.HandleFunc("/v1/payments/{id}", DeletePayment).Methods(http.MethodDelete)
 
-	router.Use(middleware.JwtAuthentication)
-
-	utils.GetDB().AutoMigrate(
+	infrastructure.GetDB().AutoMigrate(
 		&models.Account{},
 		&models.Payment{},
 		&models.Attributes{},
@@ -46,6 +51,8 @@ func TestMain(m *testing.M) {
 		&models.FX{},
 	)
 
+	deleteDatabase()
+
 	server = &http.Server{Addr: ":8000", Handler: router}
 
 	code := m.Run()
@@ -53,13 +60,14 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// Helpers
 func createAndLogUser(t *testing.T, email string, password string) string {
 	user := models.Account{
 		Email:    email,
 		Password: password,
 	}
 
-	if err := utils.GetDB().Create(&user).Error; err != nil {
+	if err := infrastructure.GetDB().Create(&user).Error; err != nil {
 		t.Fatalf("Failed create User")
 	}
 
@@ -70,7 +78,7 @@ func createAndLogUser(t *testing.T, email string, password string) string {
 	}
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user/login", bytes.NewBuffer(jsonBytes), http.StatusOK)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	var accountNew models.Account
@@ -81,16 +89,16 @@ func createAndLogUser(t *testing.T, email string, password string) string {
 	return accountNew.Token
 }
 
-func deleteDatabase(t *testing.T) {
-	utils.GetDB().Unscoped().Delete(&models.Account{})
-	utils.GetDB().Unscoped().Delete(&models.Payment{})
-	utils.GetDB().Unscoped().Delete(&models.Attributes{})
-	utils.GetDB().Unscoped().Delete(&models.BeneficiaryParty{})
-	utils.GetDB().Unscoped().Delete(&models.DebtorParty{})
-	utils.GetDB().Unscoped().Delete(&models.SponsorParty{})
-	utils.GetDB().Unscoped().Delete(&models.ChargesInformation{})
-	utils.GetDB().Unscoped().Delete(&models.Charge{})
-	utils.GetDB().Unscoped().Delete(&models.FX{})
+func deleteDatabase() {
+	infrastructure.GetDB().Unscoped().Delete(&models.Account{})
+	infrastructure.GetDB().Unscoped().Delete(&models.Payment{})
+	infrastructure.GetDB().Unscoped().Delete(&models.Attributes{})
+	infrastructure.GetDB().Unscoped().Delete(&models.BeneficiaryParty{})
+	infrastructure.GetDB().Unscoped().Delete(&models.DebtorParty{})
+	infrastructure.GetDB().Unscoped().Delete(&models.SponsorParty{})
+	infrastructure.GetDB().Unscoped().Delete(&models.ChargesInformation{})
+	infrastructure.GetDB().Unscoped().Delete(&models.Charge{})
+	infrastructure.GetDB().Unscoped().Delete(&models.FX{})
 }
 
 func paymentExample(paymentId uuid.UUID) []byte {
@@ -167,7 +175,7 @@ func insertPayments(t *testing.T, paymentId uuid.UUID) models.Payment {
 		t.Fatal(err)
 	}
 
-	if err := utils.GetDB().Create(&payment).Error; err != nil {
+	if err := infrastructure.GetDB().Create(&payment).Error; err != nil {
 		t.Fatal(err)
 	}
 
@@ -209,7 +217,7 @@ func doRequestWithoutLogin(t *testing.T, method string, url string, body io.Read
 	return rw
 }
 
-func validateHeaderContenType(t *testing.T, rw *httptest.ResponseRecorder) {
+func validateHeaderContentType(t *testing.T, rw *httptest.ResponseRecorder) {
 	if rw.Header().Get("Content-Type") != "application/json" {
 		t.Fatalf("Content type was not application/json")
 	}
@@ -243,12 +251,13 @@ func convertJsonToPayments(t *testing.T, rw *httptest.ResponseRecorder) (utils.R
 	return response, payments
 }
 
+// Tests
 func TestGetPaymentsWithEmptyDatabase(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	rw := doRequestWithLogin(t, http.MethodGet, "/v1/payments", nil, http.StatusOK)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response, payments := convertJsonToPayments(t, rw)
 
 	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: "/v1/payments"}}, response.Links)
@@ -257,12 +266,12 @@ func TestGetPaymentsWithEmptyDatabase(t *testing.T) {
 
 func TestGetPaymentsWithOnePayment(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	payment := insertPayments(t, uuid.NewV1())
 
 	rw := doRequestWithLogin(t, http.MethodGet, "/v1/payments", nil, http.StatusOK)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 
 	response, payments := convertJsonToPayments(t, rw)
 
@@ -271,12 +280,20 @@ func TestGetPaymentsWithOnePayment(t *testing.T) {
 
 	require.Len(t, payments, 1, "Payments array must contain one payment when database has one payment")
 	assert.JSONEq(t, string(expectedPaymentJson), string(atualPaymentJson))
-	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: "/v1/payments"}}, response.Links)
+
+	// Check Links
+	assert.EqualValues(t, []utils.Link{{
+		Rel:  "self",
+		Href: "/v1/payments",
+	}, {
+		Rel:  payment.ID.String(),
+		Href: fmt.Sprintf("/v1/payments/%s", payment.ID.String()),
+	}}, response.Links)
 }
 
 func TestGetPaymentsWithMultiplePayments(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	var expectedPayments []models.Payment
 
@@ -284,7 +301,7 @@ func TestGetPaymentsWithMultiplePayments(t *testing.T) {
 	expectedPayments = append(expectedPayments, insertPayments(t, uuid.NewV1()))
 
 	rw := doRequestWithLogin(t, http.MethodGet, "/v1/payments", nil, http.StatusOK)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response, payments := convertJsonToPayments(t, rw)
 
 	var expectedPaymentsJson []string
@@ -302,17 +319,28 @@ func TestGetPaymentsWithMultiplePayments(t *testing.T) {
 	for i := 0; i < len(atualPayments); i++ {
 		assert.JSONEq(t, expectedPaymentsJson[i], atualPayments[i])
 	}
-	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: "/v1/payments"}}, response.Links)
+	assert.EqualValues(t, []utils.Link{{
+		Rel:  "self",
+		Href: "/v1/payments",
+	},
+		{
+			Rel:  expectedPayments[0].ID.String(),
+			Href: fmt.Sprintf("/v1/payments/%s", expectedPayments[0].ID.String()),
+		},
+		{
+			Rel:  expectedPayments[1].ID.String(),
+			Href: fmt.Sprintf("/v1/payments/%s", expectedPayments[1].ID.String()),
+		}}, response.Links)
 }
 
 func TestGetSinglePaymentWithOnePayment(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	testPayment := insertPayments(t, uuid.NewV1())
 
 	rw := doRequestWithLogin(t, http.MethodGet, fmt.Sprintf("/v1/payments/%s", testPayment.ID.String()), nil, http.StatusOK)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response, payment := convertJsonToPayment(t, rw)
 
 	assert.EqualValues(t, convertToJson(t, testPayment), convertToJson(t, payment))
@@ -321,10 +349,10 @@ func TestGetSinglePaymentWithOnePayment(t *testing.T) {
 
 func TestGetSinglePaymentForNonExistingPayment(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	rw := doRequestWithLogin(t, http.MethodGet, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil, http.StatusNotFound)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
@@ -332,10 +360,10 @@ func TestGetSinglePaymentForNonExistingPayment(t *testing.T) {
 
 func TestGetSinglePaymentForInvalidUUID(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	rw := doRequestWithLogin(t, http.MethodGet, fmt.Sprintf("/v1/payments/%s", "TestUUID"), nil, http.StatusBadRequest)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_REQUESTED_UUID_INVALID}, response.Errors)
@@ -343,12 +371,12 @@ func TestGetSinglePaymentForInvalidUUID(t *testing.T) {
 
 func TestGetSinglePaymentForNonExistingPaymentWhenOtherPaymentExists(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	_ = insertPayments(t, uuid.NewV1())
 
 	rw := doRequestWithLogin(t, http.MethodGet, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil, http.StatusNotFound)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_RESOURCE_NOT_FOUND}, response.Errors)
@@ -356,36 +384,37 @@ func TestGetSinglePaymentForNonExistingPaymentWhenOtherPaymentExists(t *testing.
 
 func TestCreateSinglePayment(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	testPaymentBytes := paymentExample(uuid.NewV1())
 
 	rw := doRequestWithLogin(t, http.MethodPost, "/v1/payments", bytes.NewBuffer(testPaymentBytes), http.StatusCreated)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
+	response := decodeApiResponse(t, rw)
 
 	var testPayment models.Payment
 	if err := json.Unmarshal(testPaymentBytes, &testPayment); err != nil {
 		t.Fatalf("Failed to decode payment: %s", err)
 	}
-	assert.Equal(t, fmt.Sprintf("/v1/payments/%s", testPayment.ID.String()), rw.Header().Get("Location"))
 
 	actualPayment := models.Payment{
 		ID: testPayment.ID,
 	}
 
-	utils.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
+	infrastructure.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
 
 	assert.JSONEq(t, string(convertToJson(t, testPayment)), string(convertToJson(t, actualPayment)))
+	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: fmt.Sprintf("/v1/payments/%s", actualPayment.ID.String())}}, response.Links)
 }
 
 func TestCreateSinglePaymentWhitoutLoggedUser(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	testPaymentBytes := paymentExample(uuid.NewV1())
 
 	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/payments", bytes.NewBuffer(testPaymentBytes), http.StatusForbidden)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_MISSING_TOKEN}, response.Errors)
@@ -393,7 +422,7 @@ func TestCreateSinglePaymentWhitoutLoggedUser(t *testing.T) {
 
 func TestCreateSinglePaymentThatExists(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	examplePayment := insertPayments(t, uuid.NewV1())
 	jsonBytes, err := json.Marshal(examplePayment)
@@ -403,12 +432,12 @@ func TestCreateSinglePaymentThatExists(t *testing.T) {
 
 func TestCreateSinglePaymentWithInvalidBody(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	jsonBytes := []byte("{ malformed json }")
 
 	rw := doRequestWithLogin(t, http.MethodPost, "/v1/payments", bytes.NewBuffer(jsonBytes), http.StatusBadRequest)
-	validateHeaderContenType(t, rw)
+	validateHeaderContentType(t, rw)
 	response := decodeApiResponse(t, rw)
 
 	assert.EqualValues(t, []string{utils.ERROR_INVALID_JSON}, response.Errors)
@@ -416,7 +445,7 @@ func TestCreateSinglePaymentWithInvalidBody(t *testing.T) {
 
 func TestUpdatePayment(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	testPayment := insertPayments(t, uuid.NewV1())
 	testPayment.Attributes.Currency = "Euro"
@@ -424,21 +453,22 @@ func TestUpdatePayment(t *testing.T) {
 	jsonBytes, err := json.Marshal(testPayment)
 	require.Nil(t, err)
 
-	rw := doRequestWithLogin(t, http.MethodPut, fmt.Sprintf("/v1/payments/%s", testPayment.ID), bytes.NewBuffer(jsonBytes), http.StatusNoContent)
-
-	assert.Equal(t, fmt.Sprintf("/v1/payments/%s", testPayment.ID.String()), rw.Header().Get("Location"))
+	rw := doRequestWithLogin(t, http.MethodPut, fmt.Sprintf("/v1/payments/%s", testPayment.ID), bytes.NewBuffer(jsonBytes), http.StatusOK)
+	response := decodeApiResponse(t, rw)
 
 	actualPayment := models.Payment{
 		ID: testPayment.ID,
 	}
 
-	utils.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
+	infrastructure.GetDB().Set("gorm:auto_preload", true).Find(&actualPayment)
 	assert.JSONEq(t, string(convertToJson(t, testPayment)), string(convertToJson(t, actualPayment)))
+	assert.EqualValues(t, []utils.Link{{Rel: "self", Href: fmt.Sprintf("/v1/payments/%s", actualPayment.ID.String())}}, response.Links)
+
 }
 
 func TestUpdateSinglePaymentWithIDThatDoesNotMatchURL(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	testPayment := insertPayments(t, uuid.NewV1())
 
@@ -453,7 +483,7 @@ func TestUpdateSinglePaymentWithIDThatDoesNotMatchURL(t *testing.T) {
 
 func TestUpdateNonExistentPayment(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	id := uuid.NewV1()
 	testPayment := paymentExample(id)
@@ -466,7 +496,7 @@ func TestUpdateNonExistentPayment(t *testing.T) {
 
 func TestUpdateSinglePaymentWithInvalidBody(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	examplePayment := insertPayments(t, uuid.NewV1())
 
@@ -479,18 +509,18 @@ func TestUpdateSinglePaymentWithInvalidBody(t *testing.T) {
 
 func TestDeletePayment(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 
 	testPayment := insertPayments(t, uuid.NewV1())
 	_ = doRequestWithLogin(t, http.MethodDelete, fmt.Sprintf("/v1/payments/%s", testPayment.ID), nil, http.StatusNoContent)
 
-	err := utils.GetDB().Where("ID = ?", testPayment.ID).First(&models.Payment{}).Error
+	err := infrastructure.GetDB().Where("ID = ?", testPayment.ID).First(&models.Payment{}).Error
 	assert.True(t, gorm.IsRecordNotFoundError(err))
 }
 
 func TestDeleteNonExistingPayment(t *testing.T) {
 
-	deleteDatabase(t)
+	deleteDatabase()
 	rw := doRequestWithLogin(t, http.MethodDelete, fmt.Sprintf("/v1/payments/%s", uuid.NewV1().String()), nil, http.StatusNotFound)
 	response := decodeApiResponse(t, rw)
 

@@ -6,6 +6,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
 	"os"
+	"payments/infrastructure"
 	"payments/utils"
 	"strings"
 	"time"
@@ -85,7 +86,7 @@ func (a *Account) CheckPassword(password string) error {
 // GetAccountByEmail Get a account model through an email
 func GetAccountByEmail(email string) (Account, error) {
 	account := Account{}
-	err := utils.GetDB().Table("accounts").Where("email = ?", email).First(&account).Error
+	err := infrastructure.GetDB().Table("accounts").Where("email = ?", email).First(&account).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return account, errors.New(utils.ERROR_SERVER)
 	}
