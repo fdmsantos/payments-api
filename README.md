@@ -84,6 +84,7 @@ curl --request POST \
 
 ```sh
 # Necessary have postgres client installed
+# Check terraform.tfvars file to get database credentials
 # psql -h payment-api-dev-db.culfnfuxbney.eu-west-1.rds.amazonaws.com -U api -d payments
 Password for user api: 
 psql (11.2, server 10.6)
