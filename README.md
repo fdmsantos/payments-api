@@ -21,6 +21,7 @@ docker-compose up -d
 ```
 
 Connect to localhost:8000/v1/user To create new User.
+See the [examples](#Examples)
 
 ### Aws with terraform
 
