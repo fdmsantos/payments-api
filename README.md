@@ -56,10 +56,10 @@ docker tag payments-api:latest $IMAGE_REPO:v1
 docker push $IMAGE_REPO:v1
 ```
 
-- Deploy to AWS with terraform [Aws Infrastructure Diagram](tf/AWSDiagram.pdf)
+- Deploy to AWS with terraform [Aws Infrastructure Diagram](deploy-aws/AWSDiagram.pdf)
 
 ```sh
-cd tf
+cd deploy-aws
 terraform init
 terraform apply
 ```
