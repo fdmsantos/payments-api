@@ -70,7 +70,11 @@ func TestCreateAccountWithExistsEmail(t *testing.T) {
 
 	account := models.Account{
 		Email:    "dummyemail@dummy.com",
-		Password: "dsadasdadasd",
+		Password: "dummypassword",
+	}
+
+	if err := account.CreateHashedPassword(); err != nil {
+		t.Fatal(err)
 	}
 
 	if err := infrastructure.GetDB().Create(&account).Error; err != nil {
@@ -142,13 +146,48 @@ func TestLoginWithInvalidBody(t *testing.T) {
 	assert.EqualValues(t, []string{utils.ERROR_INVALID_JSON}, response.Errors)
 }
 
+func TestLoginWithInvalidPassword(t *testing.T) {
+
+	deleteDatabase()
+
+	account := models.Account{
+		Email:    "dummyemail@dummy.com",
+		Password: "dummypassword",
+	}
+
+	if err := account.CreateHashedPassword(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := infrastructure.GetDB().Create(&account).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	accountToLogin := models.Account{
+		Email:    "dummyemail@dummy.com",
+		Password: "dummy",
+	}
+
+	jsonBytes, err := json.Marshal(accountToLogin)
+
+	if err != nil {
+		t.Fatalf("Failed to encode to JSON: %s", err)
+	}
+
+	rw := doRequestWithoutLogin(t, http.MethodPost, "/v1/user/login", bytes.NewBuffer(jsonBytes), http.StatusUnauthorized)
+	validateHeaderContentType(t, rw)
+	response := decodeApiResponse(t, rw)
+
+	assert.EqualValues(t, []string{utils.ERROR_INVALID_LOGIN}, response.Errors)
+}
+
 func TestLoginWithNonExistsEmail(t *testing.T) {
 
 	deleteDatabase()
 
 	account := models.Account{
 		Email:    "dummyemail@dummy.com",
-		Password: "dsadasdadasd",
+		Password: "dummypassword",
 	}
 
 	jsonBytes, err := json.Marshal(account)
@@ -171,6 +210,10 @@ func TestLogin(t *testing.T) {
 	account := models.Account{
 		Email:    "dummyemail@dummy.com",
 		Password: "dummypassword",
+	}
+
+	if err := account.CreateHashedPassword(); err != nil {
+		t.Fatal(err)
 	}
 
 	if err := infrastructure.GetDB().Create(&account).Error; err != nil {
