@@ -17,7 +17,7 @@ Api Design: [click me](Form3-Payments-api.pdf)
 git clone https://github.com/fdmsantos/payments-api
 cd payments-api
 docker-compose build
-docker-compose up -d 
+docker-compose up
 ```
 
 Connect to localhost:8000/v1/user To create new User.
@@ -85,7 +85,7 @@ curl --request POST \
 ```sh
 # Necessary have postgres client installed
 # Check terraform.tfvars file to get database credentials
-# psql -h payment-api-dev-db.culfnfuxbney.eu-west-1.rds.amazonaws.com -U api -d payments
+$ psql -h payment-api-dev-db.culfnfuxbney.eu-west-1.rds.amazonaws.com -U api -d payments
 Password for user api: 
 psql (11.2, server 10.6)
 SSL connection (protocol: TLSv1.2, cipher: ECDHE-RSA-AES256-GCM-SHA384, bits: 256, compression: off)
@@ -311,21 +311,16 @@ curl --request PUT \
 ### Get Payment
 
 ```sh
-curl --request POST \
-  --url http://localhost:8000/v1/user/login \
-  --header 'content-type: application/json' \
-  --data '{
-	"email": "fabiosantos@gmail.com",
-	"password": "secretpassword"
-
-}'
+curl --request GET \
+  --url http://localhost:8000/v1/payments/216d4da9-e59a-4cc6-8df3-3da6e7580b77 \
+  --header 'authorization: Bearer $token'
 ```
 
 ### Get All Payments
 
 ```sh
 curl --request GET \
-  --url http://localhost:8000/v1/payments/216d4da9-e59a-4cc6-8df3-3da6e7580b77 \
+  --url http://localhost:8000/v1/payments \
   --header 'authorization: Bearer $token'
 ```
 
